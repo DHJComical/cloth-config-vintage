@@ -48,5 +48,47 @@ public abstract class DynamicElementListWidget<E extends DynamicElementListWidge
         public void setFocused(IGuiEventListener element_1) {
             this.focused = element_1;
         }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            for (IGuiEventListener child : children()) {
+                if (child.mouseClicked(mouseX, mouseY, button)) {
+                    setFocused(child);
+                    setDragging(true);
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean mouseReleased(double mouseX, double mouseY, int button) {
+            boolean handled = false;
+            for (IGuiEventListener child : children()) {
+                handled |= child.mouseReleased(mouseX, mouseY, button);
+            }
+            setDragging(false);
+            return handled;
+        }
+
+        @Override
+        public boolean mouseScrolled(double mouseX, double mouseY, double amount) {
+            for (IGuiEventListener child : children()) {
+                if (child.mouseScrolled(mouseX, mouseY, amount)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+            return focused != null && focused.keyReleased(keyCode, scanCode, modifiers);
+        }
+
+        @Override
+        public boolean charTyped(char typedChar, int keyCode) {
+            return focused != null && focused.charTyped(typedChar, keyCode);
+        }
     }
 }
