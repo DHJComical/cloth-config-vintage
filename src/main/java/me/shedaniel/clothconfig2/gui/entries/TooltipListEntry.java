@@ -30,6 +30,7 @@ public abstract class TooltipListEntry<T> extends AbstractConfigListEntry<T> {
     
     @Override
     public void render(int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean isHovered, float delta) {
+        super.render(index, y, x, entryWidth, entryHeight, mouseX, mouseY, isHovered, delta);
         if (isMouseInside(mouseX, mouseY, x, y, entryWidth, entryHeight)) {
             Optional<String[]> tooltip = getTooltip();
             if (tooltip.isPresent() && tooltip.get().length > 0)
