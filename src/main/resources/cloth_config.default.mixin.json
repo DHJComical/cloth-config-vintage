@@ -3,7 +3,9 @@
   "package": "me.shedaniel.clothconfig2.mixin",
   "compatibilityLevel": "JAVA_8",
   "target": "@env(DEFAULT)",
-  "client": [],
+  "client": [
+    "DefaultGuiFactoryMixin"
+  ],
   "mixins": [],
   "server": [],
   "setSourceFile": true,
