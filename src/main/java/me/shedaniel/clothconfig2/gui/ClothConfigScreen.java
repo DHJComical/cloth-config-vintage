@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.IGuiEventListener;
+import net.minecraft.client.gui.IRenderable;
 import net.minecraft.client.gui.screen.ConfirmScreen;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.TextFieldWidget;
@@ -440,7 +441,14 @@ public abstract class ClothConfigScreen extends Screen {
             blit(10, 10, 0, 54, 3, 11);
             drawString(minecraft.fontRenderer, text, 18, 12, -1);
         }
-        super.render(int_1, int_2, float_1);
+        for (IGuiEventListener child : children) {
+            if (child == listWidget || child == buttonLeftTab || child == buttonRightTab || tabButtons.contains(child)) {
+                continue;
+            }
+            if (child instanceof IRenderable) {
+                ((IRenderable) child).render(int_1, int_2, float_1);
+            }
+        }
         queuedTooltips.forEach(queuedTooltip -> renderTooltip(queuedTooltip.getText(), queuedTooltip.getX(), queuedTooltip.getY()));
         queuedTooltips.clear();
     }
