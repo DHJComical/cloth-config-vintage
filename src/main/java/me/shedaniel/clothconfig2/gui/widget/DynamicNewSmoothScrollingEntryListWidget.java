@@ -1,38 +1,21 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.gui.widget;
 
 import me.shedaniel.clothconfig2.ClothConfigInitializer;
-import me.shedaniel.math.Color;
 import me.shedaniel.math.Rectangle;
 import me.shedaniel.math.impl.PointHelper;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.input.MouseButtonEvent;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.Mth;
+import net.minecraft.client.renderer.BufferBuilder;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.vertex.DefaultVertexFormats;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.math.MathHelper;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
-import static me.shedaniel.clothconfig2.api.ScrollingContainer.clampExtension;
-import static me.shedaniel.clothconfig2.api.ScrollingContainer.handleScrollingPosition;
+import static me.shedaniel.clothconfig2.ClothConfigInitializer.clamp;
+import static me.shedaniel.clothconfig2.ClothConfigInitializer.handleScrollingPosition;
 
-@Deprecated
+@OnlyIn(Dist.CLIENT)
 public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends DynamicEntryListWidget.Entry<E>> extends DynamicEntryListWidget<E> {
     
     protected double target;
@@ -40,7 +23,7 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
     protected long start;
     protected long duration;
     
-    public DynamicNewSmoothScrollingEntryListWidget(Minecraft client, int width, int height, int top, int bottom, Identifier backgroundLocation) {
+    public DynamicNewSmoothScrollingEntryListWidget(Minecraft client, int width, int height, int top, int bottom, ResourceLocation backgroundLocation) {
         super(client, width, height, top, bottom, backgroundLocation);
     }
     
@@ -55,30 +38,30 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
     @Override
     public void capYPosition(double double_1) {
         if (!smoothScrolling)
-            this.scroll = Mth.clamp(double_1, 0.0D, this.getMaxScroll());
+            this.scroll = MathHelper.clamp(double_1, 0.0D, this.getMaxScroll());
         else {
-            scroll = clampExtension(double_1, getMaxScroll());
-            target = clampExtension(double_1, getMaxScroll());
+            scroll = clamp(double_1, getMaxScroll());
+            target = clamp(double_1, getMaxScroll());
         }
     }
     
     @Override
-    public boolean mouseDragged(MouseButtonEvent event, double deltaX, double deltaY) {
+    public boolean mouseDragged(double double_1, double double_2, int int_1, double double_3, double double_4) {
         if (!smoothScrolling)
-            return super.mouseDragged(event, deltaX, deltaY);
-        if ((this.getFocused() != null && this.isDragging() && event.buttonInfo().button() == 0) && this.getFocused().mouseDragged(event, deltaX, deltaY)) {
+            return super.mouseDragged(double_1, double_2, int_1, double_3, double_4);
+        if ((this.getFocused() != null && this.isDragging() && int_1 == 0) && this.getFocused().mouseDragged(double_1, double_2, int_1, double_3, double_4)) {
             return true;
-        } else if (event.button() == 0 && this.scrolling) {
-            if (event.y() < (double) this.top) {
+        } else if (int_1 == 0 && this.scrolling) {
+            if (double_2 < (double) this.top) {
                 this.capYPosition(0.0D);
-            } else if (event.y() > (double) this.bottom) {
+            } else if (double_2 > (double) this.bottom) {
                 this.capYPosition(this.getMaxScroll());
             } else {
                 double double_5 = Math.max(1, this.getMaxScroll());
                 int int_2 = this.bottom - this.top;
-                int int_3 = Mth.clamp((int) ((float) (int_2 * int_2) / (float) this.getMaxScrollPosition()), 32, int_2 - 8);
+                int int_3 = MathHelper.clamp((int) ((float) (int_2 * int_2) / (float) this.getMaxScrollPosition()), 32, int_2 - 8);
                 double double_6 = Math.max(1.0D, double_5 / (double) (int_2 - int_3));
-                this.capYPosition(Mth.clamp(this.getScroll() + deltaY * double_6, 0, getMaxScroll()));
+                this.capYPosition(MathHelper.clamp(this.getScroll() + double_4 * double_6, 0, getMaxScroll()));
             }
             return true;
         }
@@ -86,19 +69,18 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
     }
     
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double amountX, double amountY) {
-        for (E entry : visibleChildren()) {
-            if (entry.mouseScrolled(mouseX, mouseY, amountX, amountY)) {
+    public boolean mouseScrolled(double double_1, double double_2, double double_3) {
+        for (E entry : children()) {
+            if (entry.mouseScrolled(double_1, double_2, double_3)) {
                 return true;
             }
         }
-        if (amountY == 0) return false;
-        if (!smoothScrolling && amountY != 0) {
-            scroll += 16 * -amountY;
-            this.scroll = Mth.clamp(amountY, 0.0D, this.getMaxScroll());
+        if (!smoothScrolling) {
+            scroll += 16 * -double_3;
+            this.scroll = MathHelper.clamp(double_3, 0.0D, this.getMaxScroll());
             return true;
         }
-        offset(ClothConfigInitializer.getScrollStep() * -amountY, true);
+        offset(ClothConfigInitializer.getScrollStep() * -double_3, true);
         return true;
     }
     
@@ -111,7 +93,7 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
     }
     
     public void scrollTo(double value, boolean animated, long duration) {
-        target = clampExtension(value, getMaxScroll());
+        target = clamp(value, getMaxScroll());
         
         if (animated) {
             start = System.currentTimeMillis();
@@ -121,20 +103,21 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
     }
     
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float delta) {
+    public void render(int mouseX, int mouseY, float delta) {
         double[] target = {this.target};
         scroll = handleScrollingPosition(target, scroll, getMaxScroll(), delta, start, duration);
         this.target = target[0];
-        super.extractRenderState(graphics, mouseX, mouseY, delta);
+        super.render(mouseX, mouseY, delta);
     }
     
+    @SuppressWarnings("deprecation")
     @Override
-    protected void renderScrollBar(GuiGraphicsExtractor graphics, int maxScroll, int scrollbarPositionMinX, int scrollbarPositionMaxX) {
+    protected void renderScrollBar(Tessellator tessellator, BufferBuilder buffer, int maxScroll, int scrollbarPositionMinX, int scrollbarPositionMaxX) {
         if (!smoothScrolling)
-            super.renderScrollBar(graphics, maxScroll, scrollbarPositionMinX, scrollbarPositionMaxX);
+            super.renderScrollBar(tessellator, buffer, maxScroll, scrollbarPositionMinX, scrollbarPositionMaxX);
         else if (maxScroll > 0) {
             int height = ((this.bottom - this.top) * (this.bottom - this.top)) / this.getMaxScrollPosition();
-            height = Mth.clamp(height, 32, this.bottom - this.top - 8);
+            height = MathHelper.clamp(height, 32, this.bottom - this.top - 8);
             height -= Math.min((scroll < 0 ? (int) -scroll : scroll > getMaxScroll() ? (int) scroll - getMaxScroll() : 0), height * .95);
             height = Math.max(10, height);
             int minY = Math.min(Math.max((int) this.getScroll() * (this.bottom - this.top - height) / maxScroll + this.top, this.top), this.bottom - height);
@@ -142,11 +125,29 @@ public abstract class DynamicNewSmoothScrollingEntryListWidget<E extends Dynamic
             int bottomc = new Rectangle(scrollbarPositionMinX, minY, scrollbarPositionMaxX - scrollbarPositionMinX, height).contains(PointHelper.ofMouse()) ? 168 : 128;
             int topc = new Rectangle(scrollbarPositionMinX, minY, scrollbarPositionMaxX - scrollbarPositionMinX, height).contains(PointHelper.ofMouse()) ? 222 : 172;
             
-            graphics.fill(scrollbarPositionMinX, this.top, scrollbarPositionMaxX, this.bottom, 0xff000000);
-            graphics.fill(scrollbarPositionMinX, minY, scrollbarPositionMaxX, minY + height,
-                    Color.ofRGBA(bottomc, bottomc, bottomc, 255).getColor());
-            graphics.fill(scrollbarPositionMinX, minY, scrollbarPositionMaxX - 1, minY + height - 1,
-                    Color.ofRGBA(topc, topc, topc, 255).getColor());
+            // Black Bar
+            buffer.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR);
+            buffer.pos(scrollbarPositionMinX, this.bottom, 0.0D).tex(0, 1).color(0, 0, 0, 255).endVertex();
+            buffer.pos(scrollbarPositionMaxX, this.bottom, 0.0D).tex(1, 1).color(0, 0, 0, 255).endVertex();
+            buffer.pos(scrollbarPositionMaxX, this.top, 0.0D).tex(1, 0).color(0, 0, 0, 255).endVertex();
+            buffer.pos(scrollbarPositionMinX, this.top, 0.0D).tex(0, 0).color(0, 0, 0, 255).endVertex();
+            tessellator.draw();
+            
+            // Bottom
+            buffer.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR);
+            buffer.pos(scrollbarPositionMinX, minY + height, 0.0D).tex(0, 1).color(bottomc, bottomc, bottomc, 255).endVertex();
+            buffer.pos(scrollbarPositionMaxX, minY + height, 0.0D).tex(1, 1).color(bottomc, bottomc, bottomc, 255).endVertex();
+            buffer.pos(scrollbarPositionMaxX, minY, 0.0D).tex(1, 0).color(bottomc, bottomc, bottomc, 255).endVertex();
+            buffer.pos(scrollbarPositionMinX, minY, 0.0D).tex(0, 0).color(bottomc, bottomc, bottomc, 255).endVertex();
+            tessellator.draw();
+            
+            // Top
+            buffer.begin(7, DefaultVertexFormats.POSITION_TEX_COLOR);
+            buffer.pos(scrollbarPositionMinX, (minY + height - 1), 0.0D).tex(0, 1).color(topc, topc, topc, 255).endVertex();
+            buffer.pos((scrollbarPositionMaxX - 1), (minY + height - 1), 0.0D).tex(1, 1).color(topc, topc, topc, 255).endVertex();
+            buffer.pos((scrollbarPositionMaxX - 1), minY, 0.0D).tex(1, 0).color(topc, topc, topc, 255).endVertex();
+            buffer.pos(scrollbarPositionMinX, minY, 0.0D).tex(0, 0).color(topc, topc, topc, 255).endVertex();
+            tessellator.draw();
         }
     }
     

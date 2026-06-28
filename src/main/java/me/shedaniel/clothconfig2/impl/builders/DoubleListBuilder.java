@@ -1,27 +1,9 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.DoubleListListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,53 +11,61 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class DoubleListBuilder extends AbstractRangeListBuilder<Double, DoubleListListEntry, DoubleListBuilder> {
-    private Function<DoubleListListEntry, DoubleListListEntry.DoubleListCell> createNewInstance;
+@OnlyIn(Dist.CLIENT)
+public class DoubleListBuilder extends FieldBuilder<List<Double>, DoubleListListEntry> {
     
-    public DoubleListBuilder(Component resetButtonKey, Component fieldNameKey, List<Double> value) {
+    protected Function<Double, Optional<String>> cellErrorSupplier;
+    private Consumer<List<Double>> saveConsumer = null;
+    private Function<List<Double>, Optional<String[]>> tooltipSupplier = list -> Optional.empty();
+    private final List<Double> value;
+    private boolean expanded = false;
+    private Double min = null, max = null;
+    private Function<DoubleListListEntry, DoubleListListEntry.DoubleListCell> createNewInstance;
+    private String addTooltip = I18n.format("text.cloth-config.list.add"), removeTooltip = I18n.format("text.cloth-config.list.remove");
+    private boolean deleteButtonEnabled = true, insertInFront = true;
+    
+    public DoubleListBuilder(String resetButtonKey, String fieldNameKey, List<Double> value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public Function<Double, Optional<Component>> getCellErrorSupplier() {
-        return super.getCellErrorSupplier();
+    public Function<Double, Optional<String>> getCellErrorSupplier() {
+        return cellErrorSupplier;
     }
     
-    @Override
-    public DoubleListBuilder setCellErrorSupplier(Function<Double, Optional<Component>> cellErrorSupplier) {
-        return super.setCellErrorSupplier(cellErrorSupplier);
+    public DoubleListBuilder setCellErrorSupplier(Function<Double, Optional<String>> cellErrorSupplier) {
+        this.cellErrorSupplier = cellErrorSupplier;
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setErrorSupplier(Function<List<Double>, Optional<Component>> errorSupplier) {
+    public DoubleListBuilder setErrorSupplier(Function<List<Double>, Optional<String>> errorSupplier) {
         this.errorSupplier = errorSupplier;
         return this;
     }
     
-    @Override
     public DoubleListBuilder setDeleteButtonEnabled(boolean deleteButtonEnabled) {
-        return super.setDeleteButtonEnabled(deleteButtonEnabled);
+        this.deleteButtonEnabled = deleteButtonEnabled;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder setInsertInFront(boolean insertInFront) {
-        return super.setInsertInFront(insertInFront);
+        this.insertInFront = insertInFront;
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setAddButtonTooltip(Component addTooltip) {
-        return super.setAddButtonTooltip(addTooltip);
+    public DoubleListBuilder setAddButtonTooltip(String addTooltip) {
+        this.addTooltip = addTooltip;
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setRemoveButtonTooltip(Component removeTooltip) {
-        return super.setRemoveButtonTooltip(removeTooltip);
+    public DoubleListBuilder setRemoveButtonTooltip(String removeTooltip) {
+        this.removeTooltip = removeTooltip;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
     public DoubleListBuilder setCreateNewInstance(Function<DoubleListListEntry, DoubleListListEntry.DoubleListCell> createNewInstance) {
@@ -83,19 +73,19 @@ public class DoubleListBuilder extends AbstractRangeListBuilder<Double, DoubleLi
         return this;
     }
     
-    @Override
     public DoubleListBuilder setExpanded(boolean expanded) {
-        return super.setExpanded(expanded);
+        this.expanded = expanded;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder setSaveConsumer(Consumer<List<Double>> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder setDefaultValue(Supplier<List<Double>> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public DoubleListBuilder setMin(double min) {
@@ -108,60 +98,58 @@ public class DoubleListBuilder extends AbstractRangeListBuilder<Double, DoubleLi
         return this;
     }
     
-    @Override
     public DoubleListBuilder removeMin() {
-        return super.removeMin();
+        this.min = null;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder removeMax() {
-        return super.removeMax();
+        this.max = null;
+        return this;
     }
     
-    @Override
     public DoubleListBuilder setDefaultValue(List<Double> defaultValue) {
         this.defaultValue = () -> defaultValue;
         return this;
     }
     
-    @Override
-    public DoubleListBuilder setTooltipSupplier(Function<List<Double>, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public DoubleListBuilder setTooltipSupplier(Function<List<Double>, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public DoubleListBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = list -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public DoubleListBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = list -> tooltip;
+        return this;
     }
     
-    @Override
-    public DoubleListBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public DoubleListBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = list -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public DoubleListListEntry build() {
-        DoubleListListEntry entry = new DoubleListListEntry(getFieldNameKey(), value, isExpanded(), null, getSaveConsumer(), defaultValue, getResetButtonKey(), requireRestart, isDeleteButtonEnabled(), isInsertInFront());
+        DoubleListListEntry entry = new DoubleListListEntry(getFieldNameKey(), value, expanded, null, saveConsumer, defaultValue, getResetButtonKey(), requireRestart, deleteButtonEnabled, insertInFront);
         if (min != null)
             entry.setMinimum(min);
         if (max != null)
             entry.setMaximum(max);
         if (createNewInstance != null)
             entry.setCreateNewInstance(createNewInstance);
-        entry.setInsertButtonEnabled(isInsertButtonEnabled());
         entry.setCellErrorSupplier(cellErrorSupplier);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
-        entry.setAddTooltip(getAddTooltip());
-        entry.setRemoveTooltip(getRemoveTooltip());
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
+        entry.setAddTooltip(addTooltip);
+        entry.setRemoveTooltip(removeTooltip);
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

@@ -1,27 +1,8 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.StringListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -29,66 +10,72 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class StringFieldBuilder extends AbstractFieldBuilder<String, StringListEntry, StringFieldBuilder> {
-    public StringFieldBuilder(Component resetButtonKey, Component fieldNameKey, String value) {
+@OnlyIn(Dist.CLIENT)
+public class StringFieldBuilder extends FieldBuilder<String, StringListEntry> {
+    
+    private Consumer<String> saveConsumer = null;
+    private Function<String, Optional<String[]>> tooltipSupplier = str -> Optional.empty();
+    private final String value;
+    
+    public StringFieldBuilder(String resetButtonKey, String fieldNameKey, String value) {
         super(resetButtonKey, fieldNameKey);
         Objects.requireNonNull(value);
         this.value = value;
     }
     
-    @Override
-    public StringFieldBuilder setErrorSupplier(Function<String, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public StringFieldBuilder setErrorSupplier(Function<String, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public StringFieldBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
     public StringFieldBuilder setSaveConsumer(Consumer<String> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public StringFieldBuilder setDefaultValue(Supplier<String> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
-    @Override
     public StringFieldBuilder setDefaultValue(String defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = () -> Objects.requireNonNull(defaultValue);
+        return this;
     }
     
-    @Override
-    public StringFieldBuilder setTooltipSupplier(Function<String, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public StringFieldBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = str -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public StringFieldBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public StringFieldBuilder setTooltipSupplier(Function<String, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public StringFieldBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public StringFieldBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = str -> tooltip;
+        return this;
     }
     
-    @Override
-    public StringFieldBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public StringFieldBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = str -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public StringListEntry build() {
-        StringListEntry entry = new StringListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, getSaveConsumer(), null, isRequireRestart());
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        StringListEntry entry = new StringListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, saveConsumer, null, isRequireRestart());
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

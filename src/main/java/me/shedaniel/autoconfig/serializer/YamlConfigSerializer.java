@@ -81,4 +81,3 @@ public class YamlConfigSerializer<T extends ConfigData> implements ConfigSeriali
         return Utils.constructUnsafely(configClass);
     }
 }
-

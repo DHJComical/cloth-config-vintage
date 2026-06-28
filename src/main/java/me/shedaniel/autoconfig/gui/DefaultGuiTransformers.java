@@ -55,8 +55,8 @@ public class DefaultGuiTransformers {
                                 } else if (tooltip.count() == 1) {
                                     tryApplyTooltip(
                                             gui,
-                                            new Component[]{
-                                                    Component.translatable(String.format("%s.%s", i18n, "@Tooltip"))
+                                            new String[]{
+                                                    Component.translatable(String.format("%s.%s", i18n, "@Tooltip")).getString()
                                             }
                                     );
                                 } else {
@@ -64,7 +64,8 @@ public class DefaultGuiTransformers {
                                             gui, IntStream.range(0, tooltip.count()).boxed()
                                                     .map(i -> String.format("%s.%s[%d]", i18n, "@Tooltip", i))
                                                     .map(Component::translatable)
-                                                    .toArray(Component[]::new)
+                                                    .map(Component::getString)
+                                                    .toArray(String[]::new)
                                     );
                                 }
                             }
@@ -78,7 +79,7 @@ public class DefaultGuiTransformers {
                         .peek(gui -> {
                             if (!(gui instanceof TextListEntry)) {
                                 Comment tooltip = field.getAnnotation(Comment.class);
-                                Component[] text = new Component[]{Component.literal(tooltip.value())};
+                                String[] text = new String[]{Component.literal(tooltip.value()).getString()};
                                 tryApplyTooltip(gui, text);
                             }
                         })
@@ -126,7 +127,7 @@ public class DefaultGuiTransformers {
         return registry;
     }
     
-    private static void tryApplyTooltip(AbstractConfigListEntry gui, Component[] text) {
+    private static void tryApplyTooltip(AbstractConfigListEntry gui, String[] text) {
         if (gui instanceof TooltipListEntry) {
             TooltipListEntry tooltipGui = (TooltipListEntry) gui;
             tooltipGui.setTooltipSupplier(() -> Optional.of(text));

@@ -1,77 +1,62 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.gui.entries;
 
+
+import me.shedaniel.clothconfig2.compat.MinecraftClientHelper;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.mojang.blaze3d.platform.Window;
+import net.minecraft.client.MainWindow;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-import net.minecraft.client.gui.components.AbstractWidget;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.events.GuiEventListener;
-import net.minecraft.client.gui.narration.NarratableEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.gui.IGuiEventListener;
+import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+@OnlyIn(Dist.CLIENT)
 public class SelectionListEntry<T> extends TooltipListEntry<T> {
     
-    private final ImmutableList<T> values;
-    private final AtomicInteger index;
-    private final int original;
-    private final Button buttonWidget;
-    private final Button resetButton;
-    private final Supplier<T> defaultValue;
-    private final List<AbstractWidget> widgets;
-    private final Function<T, Component> nameProvider;
+    private ImmutableList<T> values;
+    private AtomicInteger index;
+    private Button buttonWidget, resetButton;
+    private Consumer<T> saveConsumer;
+    private Supplier<T> defaultValue;
+    private List<IGuiEventListener> widgets;
+    private Function<T, String> nameProvider;
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public SelectionListEntry(Component fieldName, T[] valuesArray, T value, Component resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer) {
+    public SelectionListEntry(String fieldName, T[] valuesArray, T value, Consumer<T> saveConsumer) {
+        this(fieldName, valuesArray, value, "text.cloth-config.reset_value", null, saveConsumer);
+    }
+    
+    
+    @Deprecated
+    public SelectionListEntry(String fieldName, T[] valuesArray, T value, String resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer) {
         this(fieldName, valuesArray, value, resetButtonKey, defaultValue, saveConsumer, null);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public SelectionListEntry(Component fieldName, T[] valuesArray, T value, Component resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, Component> nameProvider) {
+    public SelectionListEntry(String fieldName, T[] valuesArray, T value, String resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, String> nameProvider) {
         this(fieldName, valuesArray, value, resetButtonKey, defaultValue, saveConsumer, nameProvider, null);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public SelectionListEntry(Component fieldName, T[] valuesArray, T value, Component resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, Component> nameProvider, Supplier<Optional<Component[]>> tooltipSupplier) {
+    public SelectionListEntry(String fieldName, T[] valuesArray, T value, String resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, String> nameProvider, Supplier<Optional<String[]>> tooltipSupplier) {
         this(fieldName, valuesArray, value, resetButtonKey, defaultValue, saveConsumer, nameProvider, tooltipSupplier, false);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public SelectionListEntry(Component fieldName, T[] valuesArray, T value, Component resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, Component> nameProvider, Supplier<Optional<Component[]>> tooltipSupplier, boolean requiresRestart) {
+    public SelectionListEntry(String fieldName, T[] valuesArray, T value, String resetButtonKey, Supplier<T> defaultValue, Consumer<T> saveConsumer, Function<T, String> nameProvider, Supplier<Optional<String[]>> tooltipSupplier, boolean requiresRestart) {
         super(fieldName, tooltipSupplier, requiresRestart);
         if (valuesArray != null)
             this.values = ImmutableList.copyOf(valuesArray);
@@ -80,22 +65,24 @@ public class SelectionListEntry<T> extends TooltipListEntry<T> {
         this.defaultValue = defaultValue;
         this.index = new AtomicInteger(this.values.indexOf(value));
         this.index.compareAndSet(-1, 0);
-        this.original = this.values.indexOf(value);
-        this.buttonWidget = Button.builder(Component.empty(), widget -> {
+        this.buttonWidget = new Button(0, 0, 150, 20, "", widget -> {
             SelectionListEntry.this.index.incrementAndGet();
             SelectionListEntry.this.index.compareAndSet(SelectionListEntry.this.values.size(), 0);
-        }).bounds(0, 0, 150, 20).build();
-        this.resetButton = Button.builder(resetButtonKey, widget -> {
+            getScreen().setEdited(true, isRequiresRestart());
+        });
+        this.resetButton = new Button(0, 0, Minecraft.getMinecraft().fontRenderer.getStringWidth(I18n.format(resetButtonKey)) + 6, 20, I18n.format(resetButtonKey), widget -> {
             SelectionListEntry.this.index.set(getDefaultIndex());
-        }).bounds(0, 0, Minecraft.getInstance().font.width(resetButtonKey) + 6, 20).build();
-        this.saveCallback = saveConsumer;
+            getScreen().setEdited(true, isRequiresRestart());
+        });
+        this.saveConsumer = saveConsumer;
         this.widgets = Lists.newArrayList(buttonWidget, resetButton);
-        this.nameProvider = nameProvider == null ? (t -> Component.translatable(t instanceof Translatable ? ((Translatable) t).getKey() : t.toString())) : nameProvider;
+        this.nameProvider = nameProvider == null ? (t -> I18n.format(t instanceof Translatable ? ((Translatable) t).getKey() : t.toString())) : nameProvider;
     }
     
     @Override
-    public boolean isEdited() {
-        return super.isEdited() || !Objects.equals(this.index.get(), this.original);
+    public void save() {
+        if (saveConsumer != null)
+            saveConsumer.accept(getValue());
     }
     
     @Override
@@ -109,27 +96,26 @@ public class SelectionListEntry<T> extends TooltipListEntry<T> {
     }
     
     @Override
-    public void extractRenderState(GuiGraphicsExtractor graphics, int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean isHovered, float delta) {
-        super.extractRenderState(graphics, index, y, x, entryWidth, entryHeight, mouseX, mouseY, isHovered, delta);
-        Window window = Minecraft.getInstance().getWindow();
+    public void render(int index, int y, int x, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean isSelected, float delta) {
+        super.render(index, y, x, entryWidth, entryHeight, mouseX, mouseY, isSelected, delta);
+        MainWindow window = MinecraftClientHelper.getMainWindow();
         this.resetButton.active = isEditable() && getDefaultValue().isPresent() && getDefaultIndex() != this.index.get();
-        this.resetButton.setY(y);
+        this.resetButton.y = y;
         this.buttonWidget.active = isEditable();
-        this.buttonWidget.setY(y);
+        this.buttonWidget.y = y;
         this.buttonWidget.setMessage(nameProvider.apply(getValue()));
-        Component displayedFieldName = getDisplayedFieldName();
-        if (Minecraft.getInstance().font.isBidirectional()) {
-            graphics.text(Minecraft.getInstance().font, displayedFieldName.getVisualOrderText(), window.getGuiScaledWidth() - x - Minecraft.getInstance().font.width(displayedFieldName), y + 6, getPreferredTextColor());
-            this.resetButton.setX(x);
-            this.buttonWidget.setX(x + resetButton.getWidth() + 2);
+        if (Minecraft.getMinecraft().fontRenderer.getBidiFlag()) {
+            Minecraft.getMinecraft().fontRenderer.drawStringWithShadow(I18n.format(getFieldName()), window.getScaledWidth() - x - Minecraft.getMinecraft().fontRenderer.getStringWidth(I18n.format(getFieldName())), y + 5, getPreferredTextColor());
+            this.resetButton.x = x;
+            this.buttonWidget.x = x + resetButton.getWidth() + 2;
         } else {
-            graphics.text(Minecraft.getInstance().font, displayedFieldName.getVisualOrderText(), x, y + 6, getPreferredTextColor());
-            this.resetButton.setX(x + entryWidth - resetButton.getWidth());
-            this.buttonWidget.setX(x + entryWidth - 150);
+            Minecraft.getMinecraft().fontRenderer.drawStringWithShadow(I18n.format(getFieldName()), x, y + 5, getPreferredTextColor());
+            this.resetButton.x = x + entryWidth - resetButton.getWidth();
+            this.buttonWidget.x = x + entryWidth - 150;
         }
         this.buttonWidget.setWidth(150 - resetButton.getWidth() - 2);
-        resetButton.extractRenderState(graphics, mouseX, mouseY, delta);
-        buttonWidget.extractRenderState(graphics, mouseX, mouseY, delta);
+        resetButton.render(mouseX, mouseY, delta);
+        buttonWidget.render(mouseX, mouseY, delta);
     }
     
     private int getDefaultIndex() {
@@ -137,17 +123,12 @@ public class SelectionListEntry<T> extends TooltipListEntry<T> {
     }
     
     @Override
-    public List<? extends GuiEventListener> children() {
-        return widgets;
-    }
-    
-    @Override
-    public List<? extends NarratableEntry> narratables() {
+    public List<? extends IGuiEventListener> children() {
         return widgets;
     }
     
     public interface Translatable {
-        @NotNull String getKey();
+        String getKey();
     }
     
 }

@@ -52,7 +52,7 @@ import static me.shedaniel.autoconfig.util.Utils.setUnsafely;
 public class DefaultGuiProviders {
     
     private static final ConfigEntryBuilder ENTRY_BUILDER = ConfigEntryBuilder.create();
-    private static final Function<Enum<?>, Component> DEFAULT_NAME_PROVIDER = t -> Component.translatable(t instanceof SelectionListEntry.Translatable ? ((SelectionListEntry.Translatable) t).getKey() : t.toString());
+    private static final Function<Enum<?>, String> DEFAULT_NAME_PROVIDER = t -> Component.translatable(t instanceof SelectionListEntry.Translatable ? ((SelectionListEntry.Translatable) t).getKey() : t.toString()).getString();
     
     private DefaultGuiProviders() {
     }
@@ -177,7 +177,7 @@ public class DefaultGuiProviders {
                                                     str -> {
                                                         String s = Component.literal(str).getString();
                                                         for (Enum<?> constant : enums) {
-                                                            if (DEFAULT_NAME_PROVIDER.apply(constant).getString().equals(s)) {
+                                                            if (DEFAULT_NAME_PROVIDER.apply(constant).equals(s)) {
                                                                 return constant;
                                                             }
                                                         }
@@ -243,7 +243,7 @@ public class DefaultGuiProviders {
             
             return Collections.singletonList(
                     new NestedListListEntry<Object, MultiElementListEntry<Object>>(
-                            Component.translatable(i18n),
+                            Component.translatable(i18n).getString(),
                             configValue,
                             false,
                             null,
@@ -255,9 +255,9 @@ public class DefaultGuiProviders {
                             (elem, nestedListListEntry) -> {
                                 if (elem == null) {
                                     Object newDefaultElemValue = Utils.constructUnsafely(fieldTypeParam);
-                                    return new MultiElementListEntry<>(Component.translatable(classI13n), newDefaultElemValue, (List) getChildren(classI13n, fieldTypeParam, newDefaultElemValue, defaultElemValue, registry1), true);
+                                    return new MultiElementListEntry<>(Component.translatable(classI13n).getString(), newDefaultElemValue, (List) getChildren(classI13n, fieldTypeParam, newDefaultElemValue, defaultElemValue, registry1), true);
                                 } else
-                                    return new MultiElementListEntry<>(Component.translatable(classI13n), elem, (List) getChildren(classI13n, fieldTypeParam, elem, defaultElemValue, registry1), true);
+                                    return new MultiElementListEntry<>(Component.translatable(classI13n).getString(), elem, (List) getChildren(classI13n, fieldTypeParam, elem, defaultElemValue, registry1), true);
                             }
                     )
             );
@@ -275,8 +275,8 @@ public class DefaultGuiProviders {
                                     String key = i18n + ".boolean." + bool;
                                     String translate = I18n.get(key);
                                     if (translate.equals(key))
-                                        return Component.translatable("text.cloth-config.boolean.value." + bool);
-                                    return Component.literal(translate);
+                                    return Component.translatable("text.cloth-config.boolean.value." + bool).getString();
+                                    return Component.literal(translate).getString();
                                 })
                                 .build()
                 ),
@@ -481,7 +481,7 @@ public class DefaultGuiProviders {
             
             return Collections.singletonList(
                     new NestedListListEntry<Object, MultiElementListEntry<Object>>(
-                            Component.translatable(i18n),
+                            Component.translatable(i18n).getString(),
                             configValueAsList,
                             false,
                             null,
@@ -506,9 +506,9 @@ public class DefaultGuiProviders {
                             (elem, nestedListListEntry) -> {
                                 if (elem == null) {
                                     Object newDefaultElemValue = Utils.constructUnsafely(fieldTypeParam);
-                                    return new MultiElementListEntry<>(Component.translatable(classI13n), newDefaultElemValue, (List) getChildren(classI13n, fieldTypeParam, newDefaultElemValue, defaultElemValue, registry1), true);
+                                    return new MultiElementListEntry<>(Component.translatable(classI13n).getString(), newDefaultElemValue, (List) getChildren(classI13n, fieldTypeParam, newDefaultElemValue, defaultElemValue, registry1), true);
                                 } else
-                                    return new MultiElementListEntry<>(Component.translatable(classI13n), elem, (List) getChildren(classI13n, fieldTypeParam, elem, defaultElemValue, registry1), true);
+                                    return new MultiElementListEntry<>(Component.translatable(classI13n).getString(), elem, (List) getChildren(classI13n, fieldTypeParam, elem, defaultElemValue, registry1), true);
                             }
                     )
             );

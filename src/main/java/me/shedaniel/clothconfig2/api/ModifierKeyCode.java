@@ -1,32 +1,16 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.api;
 
-import com.mojang.blaze3d.platform.InputConstants;
-import me.shedaniel.clothconfig2.impl.ModifierKeyCodeImpl;
-import net.minecraft.client.Minecraft;
-import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
+import me.shedaniel.clothconfig2.compat.MinecraftClientHelper;
+import me.shedaniel.clothconfig2.impl.ModifierKeyCodeImpl;
+import net.minecraft.client.util.InputMappings;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import org.lwjgl.input.Mouse;
+
+@OnlyIn(Dist.CLIENT)
 public interface ModifierKeyCode {
-    static ModifierKeyCode of(InputConstants.Key keyCode, Modifier modifier) {
+    static ModifierKeyCode of(InputMappings.Input keyCode, Modifier modifier) {
         return new ModifierKeyCodeImpl().setKeyCodeAndModifier(keyCode, modifier);
     }
     
@@ -35,14 +19,14 @@ public interface ModifierKeyCode {
     }
     
     static ModifierKeyCode unknown() {
-        return of(InputConstants.UNKNOWN, Modifier.none());
+        return of(InputMappings.INPUT_INVALID, Modifier.none());
     }
     
-    InputConstants.Key getKeyCode();
+    InputMappings.Input getKeyCode();
     
-    ModifierKeyCode setKeyCode(InputConstants.Key keyCode);
+    ModifierKeyCode setKeyCode(InputMappings.Input keyCode);
     
-    default InputConstants.Type getType() {
+    default InputMappings.Type getType() {
         return getKeyCode().getType();
     }
     
@@ -50,36 +34,39 @@ public interface ModifierKeyCode {
     
     ModifierKeyCode setModifier(Modifier modifier);
     
-    default ModifierKeyCode copy() {
-        return copyOf(this);
-    }
-    
     default boolean matchesMouse(int button) {
-        return !isUnknown() && getType() == InputConstants.Type.MOUSE && getKeyCode().getValue() == button && getModifier().matchesCurrent();
+        return !isUnknown() && getType() == InputMappings.Type.MOUSE && getKeyCode().getKeyCode() == button && getModifier().matchesCurrent();
     }
     
     default boolean matchesKey(int keyCode, int scanCode) {
         if (isUnknown())
             return false;
-        if (keyCode == InputConstants.UNKNOWN.getValue()) {
-            return getType() == InputConstants.Type.SCANCODE && getKeyCode().getValue() == scanCode && getModifier().matchesCurrent();
+        if (keyCode == InputMappings.INPUT_INVALID.getKeyCode()) {
+            return getType() == InputMappings.Type.SCANCODE && getKeyCode().getKeyCode() == scanCode && getModifier().matchesCurrent();
         } else {
-            return getType() == InputConstants.Type.KEYSYM && getKeyCode().getValue() == keyCode && getModifier().matchesCurrent();
+            return getType() == InputMappings.Type.KEYSYM && getKeyCode().getKeyCode() == keyCode && getModifier().matchesCurrent();
         }
     }
     
     default boolean matchesCurrentMouse() {
-        if (!isUnknown() && getType() == InputConstants.Type.MOUSE && getModifier().matchesCurrent()) {
-            return GLFW.glfwGetMouseButton(Minecraft.getInstance().getWindow().handle(), getKeyCode().getValue()) == GLFW.GLFW_PRESS;
+        if (!isUnknown() && getType() == InputMappings.Type.MOUSE && getModifier().matchesCurrent()) {
+            switch (getKeyCode().getKeyCode()) {
+                case 0:
+                    return Mouse.isButtonDown(0);
+                case 1:
+                    return Mouse.isButtonDown(1);
+                case 2:
+                    return Mouse.isButtonDown(2);
+            }
         }
         return false;
     }
     
     default boolean matchesCurrentKey() {
-        return !isUnknown() && getType() == InputConstants.Type.KEYSYM && getModifier().matchesCurrent() && InputConstants.isKeyDown(Minecraft.getInstance().getWindow(), getKeyCode().getValue());
+        return !isUnknown() && getType() == InputMappings.Type.KEYSYM && getModifier().matchesCurrent() && InputMappings.isKeyDown(MinecraftClientHelper.getMainWindow().getHandle(), getKeyCode().getKeyCode());
     }
     
-    default ModifierKeyCode setKeyCodeAndModifier(InputConstants.Key keyCode, Modifier modifier) {
+    default ModifierKeyCode setKeyCodeAndModifier(InputMappings.Input keyCode, Modifier modifier) {
         setKeyCode(keyCode);
         setModifier(modifier);
         return this;
@@ -91,9 +78,11 @@ public interface ModifierKeyCode {
     
     String toString();
     
-    Component getLocalizedName();
+    default String getLocalizedName() {
+        return toString();
+    }
     
     default boolean isUnknown() {
-        return getKeyCode().equals(InputConstants.UNKNOWN);
+        return getKeyCode().equals(InputMappings.INPUT_INVALID);
     }
 }

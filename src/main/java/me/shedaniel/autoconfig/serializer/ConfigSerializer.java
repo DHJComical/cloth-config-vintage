@@ -41,4 +41,3 @@ public interface ConfigSerializer<T extends ConfigData> {
         }
     }
 }
-

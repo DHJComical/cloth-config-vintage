@@ -1,41 +1,23 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import com.google.common.collect.Lists;
 import me.shedaniel.clothconfig2.api.AbstractConfigListEntry;
 import me.shedaniel.clothconfig2.gui.entries.SubCategoryListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntry>, SubCategoryListEntry, SubCategoryBuilder> implements List<AbstractConfigListEntry> {
+@OnlyIn(Dist.CLIENT)
+public class SubCategoryBuilder extends FieldBuilder<Object, SubCategoryListEntry> implements List<AbstractConfigListEntry> {
     
     private final List<AbstractConfigListEntry> entries;
-    private Function<List<AbstractConfigListEntry>, Optional<Component[]>> tooltipSupplier = list -> Optional.empty();
+    private Function<List<AbstractConfigListEntry>, Optional<String[]>> tooltipSupplier = list -> Optional.empty();
     private boolean expanded = false;
     
-    public SubCategoryBuilder(Component resetButtonKey, Component fieldNameKey) {
+    public SubCategoryBuilder(String resetButtonKey, String fieldNameKey) {
         super(resetButtonKey, fieldNameKey);
         this.entries = Lists.newArrayList();
     }
@@ -45,22 +27,22 @@ public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntr
         throw new UnsupportedOperationException();
     }
     
-    public SubCategoryBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
+    public SubCategoryBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
         this.tooltipSupplier = list -> tooltipSupplier.get();
         return this;
     }
     
-    public SubCategoryBuilder setTooltipSupplier(Function<List<AbstractConfigListEntry>, Optional<Component[]>> tooltipSupplier) {
+    public SubCategoryBuilder setTooltipSupplier(Function<List<AbstractConfigListEntry>, Optional<String[]>> tooltipSupplier) {
         this.tooltipSupplier = tooltipSupplier;
         return this;
     }
     
-    public SubCategoryBuilder setTooltip(Optional<Component[]> tooltip) {
+    public SubCategoryBuilder setTooltip(Optional<String[]> tooltip) {
         this.tooltipSupplier = list -> tooltip;
         return this;
     }
     
-    public SubCategoryBuilder setTooltip(Component... tooltip) {
+    public SubCategoryBuilder setTooltip(String... tooltip) {
         this.tooltipSupplier = list -> Optional.ofNullable(tooltip);
         return this;
     }
@@ -70,12 +52,11 @@ public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntr
         return this;
     }
     
-    @NotNull
     @Override
     public SubCategoryListEntry build() {
         SubCategoryListEntry entry = new SubCategoryListEntry(getFieldNameKey(), entries, expanded);
         entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
     @Override
@@ -94,7 +75,7 @@ public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntr
     }
     
     @Override
-    public @NotNull Iterator<AbstractConfigListEntry> iterator() {
+    public Iterator<AbstractConfigListEntry> iterator() {
         return entries.iterator();
     }
     
@@ -119,17 +100,17 @@ public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntr
     }
     
     @Override
-    public boolean containsAll(@NotNull Collection<?> c) {
+    public boolean containsAll(Collection<?> c) {
         return entries.containsAll(c);
     }
     
     @Override
-    public boolean addAll(@NotNull Collection<? extends AbstractConfigListEntry> c) {
+    public boolean addAll(Collection<? extends AbstractConfigListEntry> c) {
         return entries.addAll(c);
     }
     
     @Override
-    public boolean addAll(int index, @NotNull Collection<? extends AbstractConfigListEntry> c) {
+    public boolean addAll(int index, Collection<? extends AbstractConfigListEntry> c) {
         return entries.addAll(index, c);
     }
     
@@ -179,17 +160,17 @@ public class SubCategoryBuilder extends FieldBuilder<List<AbstractConfigListEntr
     }
     
     @Override
-    public @NotNull ListIterator<AbstractConfigListEntry> listIterator() {
+    public ListIterator<AbstractConfigListEntry> listIterator() {
         return entries.listIterator();
     }
     
     @Override
-    public @NotNull ListIterator<AbstractConfigListEntry> listIterator(int index) {
+    public ListIterator<AbstractConfigListEntry> listIterator(int index) {
         return entries.listIterator(index);
     }
     
     @Override
-    public @NotNull List<AbstractConfigListEntry> subList(int fromIndex, int toIndex) {
+    public List<AbstractConfigListEntry> subList(int fromIndex, int toIndex) {
         return entries.subList(fromIndex, toIndex);
     }
     

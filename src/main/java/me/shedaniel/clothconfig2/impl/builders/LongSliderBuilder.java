@@ -1,65 +1,54 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.LongSliderEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class LongSliderBuilder extends AbstractSliderFieldBuilder<Long, LongSliderEntry, LongSliderBuilder> {
+@OnlyIn(Dist.CLIENT)
+public class LongSliderBuilder extends FieldBuilder<Long, LongSliderEntry> {
     
-    public LongSliderBuilder(Component resetButtonKey, Component fieldNameKey, long value, long min, long max) {
+    private Consumer<Long> saveConsumer = null;
+    private Function<Long, Optional<String[]>> tooltipSupplier = l -> Optional.empty();
+    private final long value;
+    private final long max;
+    private final long min;
+    private Function<Long, String> textGetter = null;
+    
+    public LongSliderBuilder(String resetButtonKey, String fieldNameKey, long value, long min, long max) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
         this.max = max;
         this.min = min;
     }
     
-    @Override
-    public LongSliderBuilder setErrorSupplier(Function<Long, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public LongSliderBuilder setErrorSupplier(Function<Long, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public LongSliderBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
-    public LongSliderBuilder setTextGetter(Function<Long, Component> textGetter) {
-        return super.setTextGetter(textGetter);
+    public LongSliderBuilder setTextGetter(Function<Long, String> textGetter) {
+        this.textGetter = textGetter;
+        return this;
     }
     
-    @Override
     public LongSliderBuilder setSaveConsumer(Consumer<Long> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public LongSliderBuilder setDefaultValue(Supplier<Long> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public LongSliderBuilder setDefaultValue(long defaultValue) {
@@ -67,36 +56,36 @@ public class LongSliderBuilder extends AbstractSliderFieldBuilder<Long, LongSlid
         return this;
     }
     
-    @Override
-    public LongSliderBuilder setTooltipSupplier(Function<Long, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public LongSliderBuilder setTooltipSupplier(Function<Long, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public LongSliderBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public LongSliderBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = i -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public LongSliderBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public LongSliderBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = i -> tooltip;
+        return this;
     }
     
-    @Override
-    public LongSliderBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public LongSliderBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = i -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public LongSliderEntry build() {
-        LongSliderEntry entry = new LongSliderEntry(getFieldNameKey(), min, max, value, getSaveConsumer(), getResetButtonKey(), defaultValue, null, isRequireRestart());
+        LongSliderEntry entry = new LongSliderEntry(getFieldNameKey(), min, max, value, saveConsumer, getResetButtonKey(), defaultValue, null, isRequireRestart());
         if (textGetter != null)
             entry.setTextGetter(textGetter);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

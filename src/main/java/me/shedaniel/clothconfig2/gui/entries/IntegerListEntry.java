@@ -1,57 +1,89 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.gui.entries;
 
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.ApiStatus;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
-import java.util.AbstractMap;
-import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class IntegerListEntry extends AbstractNumberListEntry<Integer> {
-    @ApiStatus.Internal
+@OnlyIn(Dist.CLIENT)
+public class IntegerListEntry extends TextFieldListEntry<Integer> {
+    
+    private static Function<String, String> stripCharacters = s -> {
+        StringBuilder stringBuilder_1 = new StringBuilder();
+        char[] var2 = s.toCharArray();
+        int var3 = var2.length;
+        
+        for (char c : var2)
+            if (Character.isDigit(c) || c == '-')
+                stringBuilder_1.append(c);
+        
+        return stringBuilder_1.toString();
+    };
+    private int minimum, maximum;
+    private Consumer<Integer> saveConsumer;
+    
+    
     @Deprecated
-    public IntegerListEntry(Component fieldName, Integer value, Component resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer) {
-        super(fieldName, value, resetButtonKey, defaultValue);
-        this.saveCallback = saveConsumer;
+    public IntegerListEntry(String fieldName, Integer value, Consumer<Integer> saveConsumer) {
+        this(fieldName, value, "text.cloth-config.reset_value", null, saveConsumer);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public IntegerListEntry(Component fieldName, Integer value, Component resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer, Supplier<Optional<Component[]>> tooltipSupplier) {
+    public IntegerListEntry(String fieldName, Integer value, String resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer) {
+        super(fieldName, value, resetButtonKey, defaultValue);
+        this.minimum = -Integer.MAX_VALUE;
+        this.maximum = Integer.MAX_VALUE;
+        this.saveConsumer = saveConsumer;
+    }
+    
+    
+    @Deprecated
+    public IntegerListEntry(String fieldName, Integer value, String resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer, Supplier<Optional<String[]>> tooltipSupplier) {
         this(fieldName, value, resetButtonKey, defaultValue, saveConsumer, tooltipSupplier, false);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public IntegerListEntry(Component fieldName, Integer value, Component resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer, Supplier<Optional<Component[]>> tooltipSupplier, boolean requiresRestart) {
+    public IntegerListEntry(String fieldName, Integer value, String resetButtonKey, Supplier<Integer> defaultValue, Consumer<Integer> saveConsumer, Supplier<Optional<String[]>> tooltipSupplier, boolean requiresRestart) {
         super(fieldName, value, resetButtonKey, defaultValue, tooltipSupplier, requiresRestart);
-        this.saveCallback = saveConsumer;
+        this.minimum = -Integer.MAX_VALUE;
+        this.maximum = Integer.MAX_VALUE;
+        this.saveConsumer = saveConsumer;
     }
     
     @Override
-    protected Map.Entry<Integer, Integer> getDefaultRange() {
-        return new AbstractMap.SimpleEntry<>(-Integer.MAX_VALUE, Integer.MAX_VALUE);
+    protected String stripAddText(String s) {
+        return stripCharacters.apply(s);
+    }
+    
+    @Override
+    protected void textFieldPreRender(TextFieldWidget widget) {
+        try {
+            double i = Integer.parseInt(textFieldWidget.getText());
+            if (i < minimum || i > maximum)
+                widget.setTextColor(16733525);
+            else
+                widget.setTextColor(14737632);
+        } catch (NumberFormatException ex) {
+            widget.setTextColor(16733525);
+        }
+    }
+    
+    @Override
+    protected boolean isMatchDefault(String text) {
+        return getDefaultValue().isPresent() && text.equals(defaultValue.get().toString());
+    }
+    
+    @Override
+    public void save() {
+        if (saveConsumer != null)
+            saveConsumer.accept(getValue());
     }
     
     public IntegerListEntry setMaximum(int maximum) {
@@ -67,22 +99,22 @@ public class IntegerListEntry extends AbstractNumberListEntry<Integer> {
     @Override
     public Integer getValue() {
         try {
-            return Integer.valueOf(textFieldWidget.getValue());
+            return Integer.valueOf(textFieldWidget.getText());
         } catch (Exception e) {
             return 0;
         }
     }
     
     @Override
-    public Optional<Component> getError() {
+    public Optional<String> getError() {
         try {
-            int i = Integer.parseInt(textFieldWidget.getValue());
+            int i = Integer.parseInt(textFieldWidget.getText());
             if (i > maximum)
-                return Optional.of(Component.translatable("text.cloth-config.error.too_large", maximum));
+                return Optional.of(I18n.format("text.cloth-config.error.too_large", maximum));
             else if (i < minimum)
-                return Optional.of(Component.translatable("text.cloth-config.error.too_small", minimum));
+                return Optional.of(I18n.format("text.cloth-config.error.too_small", minimum));
         } catch (NumberFormatException ex) {
-            return Optional.of(Component.translatable("text.cloth-config.error.not_valid_number_int"));
+            return Optional.of(I18n.format("text.cloth-config.error.not_valid_number_int"));
         }
         return super.getError();
     }

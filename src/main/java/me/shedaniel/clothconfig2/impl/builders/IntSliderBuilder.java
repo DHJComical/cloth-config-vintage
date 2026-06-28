@@ -1,65 +1,54 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.IntegerSliderEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class IntSliderBuilder extends AbstractSliderFieldBuilder<Integer, IntegerSliderEntry, IntSliderBuilder> {
+@OnlyIn(Dist.CLIENT)
+public class IntSliderBuilder extends FieldBuilder<Integer, IntegerSliderEntry> {
     
-    public IntSliderBuilder(Component resetButtonKey, Component fieldNameKey, int value, int min, int max) {
+    private Consumer<Integer> saveConsumer = null;
+    private Function<Integer, Optional<String[]>> tooltipSupplier = i -> Optional.empty();
+    private final int value;
+    private int max;
+    private int min;
+    private Function<Integer, String> textGetter = null;
+    
+    public IntSliderBuilder(String resetButtonKey, String fieldNameKey, int value, int min, int max) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
         this.max = max;
         this.min = min;
     }
     
-    @Override
-    public IntSliderBuilder setErrorSupplier(Function<Integer, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public IntSliderBuilder setErrorSupplier(Function<Integer, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public IntSliderBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
-    public IntSliderBuilder setTextGetter(Function<Integer, Component> textGetter) {
-        return super.setTextGetter(textGetter);
+    public IntSliderBuilder setTextGetter(Function<Integer, String> textGetter) {
+        this.textGetter = textGetter;
+        return this;
     }
     
-    @Override
     public IntSliderBuilder setSaveConsumer(Consumer<Integer> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public IntSliderBuilder setDefaultValue(Supplier<Integer> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public IntSliderBuilder setDefaultValue(int defaultValue) {
@@ -67,24 +56,24 @@ public class IntSliderBuilder extends AbstractSliderFieldBuilder<Integer, Intege
         return this;
     }
     
-    @Override
-    public IntSliderBuilder setTooltipSupplier(Function<Integer, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public IntSliderBuilder setTooltipSupplier(Function<Integer, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public IntSliderBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public IntSliderBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = i -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public IntSliderBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public IntSliderBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = i -> tooltip;
+        return this;
     }
     
-    @Override
-    public IntSliderBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public IntSliderBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = i -> Optional.ofNullable(tooltip);
+        return this;
     }
     
     public IntSliderBuilder setMax(int max) {
@@ -97,26 +86,16 @@ public class IntSliderBuilder extends AbstractSliderFieldBuilder<Integer, Intege
         return this;
     }
     
-    @Override
-    public IntSliderBuilder removeMin() {
-        return this;
-    }
     
-    @Override
-    public IntSliderBuilder removeMax() {
-        return this;
-    }
-    
-    @NotNull
     @Override
     public IntegerSliderEntry build() {
-        IntegerSliderEntry entry = new IntegerSliderEntry(getFieldNameKey(), min, max, value, getResetButtonKey(), defaultValue, getSaveConsumer(), null, isRequireRestart());
+        IntegerSliderEntry entry = new IntegerSliderEntry(getFieldNameKey(), min, max, value, getResetButtonKey(), defaultValue, saveConsumer, null, isRequireRestart());
         if (textGetter != null)
             entry.setTextGetter(textGetter);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

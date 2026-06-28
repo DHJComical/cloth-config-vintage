@@ -1,71 +1,47 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import me.shedaniel.clothconfig2.api.ConfigBuilder;
 import me.shedaniel.clothconfig2.api.ConfigCategory;
-import me.shedaniel.clothconfig2.api.Expandable;
-import me.shedaniel.clothconfig2.gui.AbstractConfigScreen;
+import me.shedaniel.clothconfig2.api.Pair;
 import me.shedaniel.clothconfig2.gui.ClothConfigScreen;
-import me.shedaniel.clothconfig2.gui.GlobalizedClothConfigScreen;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import org.jetbrains.annotations.ApiStatus;
+import net.minecraft.client.gui.AbstractGui;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-@ApiStatus.Internal
+@Deprecated
+@OnlyIn(Dist.CLIENT)
 public class ConfigBuilderImpl implements ConfigBuilder {
+    
     private Runnable savingRunnable;
-    private Screen parent;
-    private Component title = Component.translatable("text.cloth-config.config");
-    private boolean globalized = false;
-    private boolean globalizedExpanded = true;
+    private GuiScreen parent;
+    private String title = "text.cloth-config.config";
     private boolean editable = true;
     private boolean tabsSmoothScroll = true;
     private boolean listSmoothScroll = true;
+    private boolean doesProcessErrors = true;
     private boolean doesConfirmSave = true;
-    private boolean transparentBackground = true;
-    private Identifier defaultBackground = Identifier.withDefaultNamespace("textures/block/dirt.png");
-    private Consumer<Screen> afterInitConsumer = screen -> {};
-    private final Map<String, ConfigCategory> categoryMap = Maps.newLinkedHashMap();
+    private boolean transparentBackground = false;
+    private ResourceLocation defaultBackground = AbstractGui.BACKGROUND_LOCATION;
+    private Consumer<GuiScreen> afterInitConsumer = screen -> {};
+    private final Map<String, ResourceLocation> categoryBackground = Maps.newHashMap();
+    private final Map<String, List<Pair<String, Object>>> dataMap = Maps.newLinkedHashMap();
     private String fallbackCategory = null;
     private boolean alwaysShowTabs = false;
     
-    @ApiStatus.Internal
+    @Deprecated
     public ConfigBuilderImpl() {
         
-    }
-    
-    @Override
-    public void setGlobalized(boolean globalized) {
-        this.globalized = globalized;
-    }
-    
-    @Override
-    public void setGlobalizedExpanded(boolean globalizedExpanded) {
-        this.globalizedExpanded = globalizedExpanded;
     }
     
     @Override
@@ -86,40 +62,35 @@ public class ConfigBuilderImpl implements ConfigBuilder {
     }
     
     @Override
-    public boolean hasTransparentBackground() {
-        return transparentBackground;
-    }
-    
-    @Override
-    public ConfigBuilder setAfterInitConsumer(Consumer<Screen> afterInitConsumer) {
+    public ConfigBuilder setAfterInitConsumer(Consumer<GuiScreen> afterInitConsumer) {
         this.afterInitConsumer = afterInitConsumer;
         return this;
     }
     
     @Override
     public ConfigBuilder setFallbackCategory(ConfigCategory fallbackCategory) {
-        this.fallbackCategory = Objects.requireNonNull(fallbackCategory).getCategoryKey().getString();
+        this.fallbackCategory = Objects.requireNonNull(fallbackCategory).getCategoryKey();
         return this;
     }
     
     @Override
-    public Screen getParentScreen() {
+    public GuiScreen getParentScreen() {
         return parent;
     }
     
     @Override
-    public ConfigBuilder setParentScreen(Screen parent) {
+    public ConfigBuilder setParentScreen(GuiScreen parent) {
         this.parent = parent;
         return this;
     }
     
     @Override
-    public Component getTitle() {
+    public String getTitle() {
         return title;
     }
     
     @Override
-    public ConfigBuilder setTitle(Component title) {
+    public ConfigBuilder setTitle(String title) {
         this.title = title;
         return this;
     }
@@ -136,35 +107,44 @@ public class ConfigBuilderImpl implements ConfigBuilder {
     }
     
     @Override
-    public ConfigCategory getOrCreateCategory(Component categoryKey) {
-        if (categoryMap.containsKey(categoryKey.getString()))
-            return categoryMap.get(categoryKey.getString());
+    public ConfigCategory getOrCreateCategory(String categoryKey) {
+        if (dataMap.containsKey(categoryKey))
+            return new ConfigCategoryImpl(categoryKey, identifier -> {
+                if (transparentBackground)
+                    throw new IllegalStateException("Cannot set category background if screen is using transparent background.");
+                categoryBackground.put(categoryKey, identifier);
+            }, () -> dataMap.get(categoryKey), () -> removeCategory(categoryKey));
+        dataMap.put(categoryKey, Lists.newArrayList());
         if (fallbackCategory == null)
-            fallbackCategory = categoryKey.getString();
-        return categoryMap.computeIfAbsent(categoryKey.getString(), key -> new ConfigCategoryImpl(this, categoryKey));
+            fallbackCategory = categoryKey;
+        return new ConfigCategoryImpl(categoryKey, identifier -> {
+            if (transparentBackground)
+                throw new IllegalStateException("Cannot set category background if screen is using transparent background.");
+            categoryBackground.put(categoryKey, identifier);
+        }, () -> dataMap.get(categoryKey), () -> removeCategory(categoryKey));
     }
     
     @Override
-    public ConfigBuilder removeCategory(Component category) {
-        if (categoryMap.containsKey(category.getString()) && Objects.equals(fallbackCategory, category.getString()))
+    public ConfigBuilder removeCategory(String category) {
+        if (dataMap.containsKey(category) && fallbackCategory.equals(category))
             fallbackCategory = null;
-        if (!categoryMap.containsKey(category.getString()))
+        if (!dataMap.containsKey(category))
             throw new NullPointerException("Category doesn't exist!");
-        categoryMap.remove(category.getString());
+        dataMap.remove(category);
         return this;
     }
     
     @Override
-    public ConfigBuilder removeCategoryIfExists(Component category) {
-        if (categoryMap.containsKey(category.getString()) && Objects.equals(fallbackCategory, category.getString()))
+    public ConfigBuilder removeCategoryIfExists(String category) {
+        if (dataMap.containsKey(category) && fallbackCategory.equals(category))
             fallbackCategory = null;
-        categoryMap.remove(category.getString());
+        dataMap.remove(category);
         return this;
     }
     
     @Override
-    public boolean hasCategory(Component category) {
-        return categoryMap.containsKey(category.getString());
+    public boolean hasCategory(String category) {
+        return dataMap.containsKey(category);
     }
     
     @Override
@@ -201,12 +181,23 @@ public class ConfigBuilderImpl implements ConfigBuilder {
     }
     
     @Override
-    public Identifier getDefaultBackgroundTexture() {
+    public ConfigBuilder setDoesProcessErrors(boolean processErrors) {
+        this.doesProcessErrors = processErrors;
+        return this;
+    }
+    
+    @Override
+    public boolean doesProcessErrors() {
+        return doesProcessErrors;
+    }
+    
+    @Override
+    public ResourceLocation getDefaultBackgroundTexture() {
         return defaultBackground;
     }
     
     @Override
-    public ConfigBuilder setDefaultBackgroundTexture(Identifier texture) {
+    public ConfigBuilder setDefaultBackgroundTexture(ResourceLocation texture) {
         this.defaultBackground = texture;
         return this;
     }
@@ -218,29 +209,32 @@ public class ConfigBuilderImpl implements ConfigBuilder {
     }
     
     @Override
-    public Consumer<Screen> getAfterInitConsumer() {
+    public Consumer<GuiScreen> getAfterInitConsumer() {
         return afterInitConsumer;
     }
     
     @Override
     public Screen build() {
-        if (categoryMap.isEmpty() || fallbackCategory == null)
+        if (dataMap.isEmpty() || fallbackCategory == null)
             throw new NullPointerException("There cannot be no categories or fallback category!");
-        AbstractConfigScreen screen;
-        if (globalized) {
-            screen = new GlobalizedClothConfigScreen(parent, title, categoryMap, defaultBackground);
-        } else {
-            screen = new ClothConfigScreen(parent, title, categoryMap, defaultBackground);
-        }
-        screen.setSavingRunnable(savingRunnable);
+        ClothConfigScreen screen = new ClothConfigScreen(parent, I18n.format(title), dataMap, doesConfirmSave, doesProcessErrors, listSmoothScroll, defaultBackground, categoryBackground) {
+            @Override
+            public void save() {
+                if (savingRunnable != null)
+                    savingRunnable.run();
+            }
+            
+            @Override
+            protected void init() {
+                super.init();
+                afterInitConsumer.accept(this);
+            }
+        };
         screen.setEditable(editable);
-        screen.setFallbackCategory(fallbackCategory == null ? null : Component.literal(fallbackCategory));
+        screen.setFallbackCategory(fallbackCategory);
+        screen.setSmoothScrollingTabs(tabsSmoothScroll);
         screen.setTransparentBackground(transparentBackground);
         screen.setAlwaysShowTabs(alwaysShowTabs);
-        screen.setConfirmSave(doesConfirmSave);
-        screen.setAfterInitConsumer(afterInitConsumer);
-        if (screen instanceof Expandable)
-            ((Expandable) screen).setExpanded(globalizedExpanded);
         return screen;
     }
     

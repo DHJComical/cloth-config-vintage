@@ -1,53 +1,35 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.gui.entries;
 
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.ApiStatus;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+@OnlyIn(Dist.CLIENT)
 public class IntegerListListEntry extends AbstractTextFieldListListEntry<Integer, IntegerListListEntry.IntegerListCell, IntegerListListEntry> {
     
     private int minimum, maximum;
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public IntegerListListEntry(Component fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<Component[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, Component resetButtonKey) {
+    public IntegerListListEntry(String fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<String[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, String resetButtonKey) {
         this(fieldName, value, defaultExpanded, tooltipSupplier, saveConsumer, defaultValue, resetButtonKey, false);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public IntegerListListEntry(Component fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<Component[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, Component resetButtonKey, boolean requiresRestart) {
+    public IntegerListListEntry(String fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<String[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, String resetButtonKey, boolean requiresRestart) {
         this(fieldName, value, defaultExpanded, tooltipSupplier, saveConsumer, defaultValue, resetButtonKey, requiresRestart, true, true);
     }
     
-    @ApiStatus.Internal
+    
     @Deprecated
-    public IntegerListListEntry(Component fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<Component[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, Component resetButtonKey, boolean requiresRestart, boolean deleteButtonEnabled, boolean insertInFront) {
+    public IntegerListListEntry(String fieldName, List<Integer> value, boolean defaultExpanded, Supplier<Optional<String[]>> tooltipSupplier, Consumer<List<Integer>> saveConsumer, Supplier<List<Integer>> defaultValue, String resetButtonKey, boolean requiresRestart, boolean deleteButtonEnabled, boolean insertInFront) {
         super(fieldName, value, defaultExpanded, tooltipSupplier, saveConsumer, defaultValue, resetButtonKey, requiresRestart, deleteButtonEnabled, insertInFront, IntegerListCell::new);
         this.minimum = Integer.MIN_VALUE;
         this.maximum = Integer.MAX_VALUE;
@@ -84,29 +66,28 @@ public class IntegerListListEntry extends AbstractTextFieldListListEntry<Integer
         }
         
         @Override
-        protected boolean isValidText(@NotNull String text) {
+        protected boolean isValidText(String text) {
             return text.chars().allMatch(c -> Character.isDigit(c) || c == '-');
         }
         
-        @Override
         public Integer getValue() {
             try {
-                return Integer.valueOf(widget.getValue());
+                return Integer.valueOf(widget.getText());
             } catch (NumberFormatException e) {
                 return 0;
             }
         }
         
         @Override
-        public Optional<Component> getError() {
+        public Optional<String> getError() {
             try {
-                int i = Integer.parseInt(widget.getValue());
+                int i = Integer.parseInt(widget.getText());
                 if (i > listListEntry.maximum)
-                    return Optional.of(Component.translatable("text.cloth-config.error.too_large", listListEntry.maximum));
+                    return Optional.of(I18n.format("text.cloth-config.error.too_large", listListEntry.maximum));
                 else if (i < listListEntry.minimum)
-                    return Optional.of(Component.translatable("text.cloth-config.error.too_small", listListEntry.minimum));
+                    return Optional.of(I18n.format("text.cloth-config.error.too_small", listListEntry.minimum));
             } catch (NumberFormatException ex) {
-                return Optional.of(Component.translatable("text.cloth-config.error.not_valid_number_int"));
+                return Optional.of(I18n.format("text.cloth-config.error.not_valid_number_int"));
             }
             return Optional.empty();
         }

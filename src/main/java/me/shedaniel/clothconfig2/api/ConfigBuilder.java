@@ -1,59 +1,72 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.api;
 
 import me.shedaniel.clothconfig2.impl.ConfigBuilderImpl;
 import me.shedaniel.clothconfig2.impl.ConfigEntryBuilderImpl;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.function.Consumer;
 
+@OnlyIn(Dist.CLIENT)
 public interface ConfigBuilder {
     
+    @SuppressWarnings("deprecation")
     static ConfigBuilder create() {
         return new ConfigBuilderImpl();
     }
     
+    /**
+     * @deprecated Use {@link ConfigBuilder#create()}
+     */
+    @Deprecated
+    static ConfigBuilder create(GuiScreen parent, String title) {
+        return create().setParentScreen(parent).setTitle(title);
+    }
+    
     ConfigBuilder setFallbackCategory(ConfigCategory fallbackCategory);
     
-    Screen getParentScreen();
+    GuiScreen getParentScreen();
     
-    ConfigBuilder setParentScreen(Screen parent);
+    ConfigBuilder setParentScreen(GuiScreen parent);
     
-    Component getTitle();
+    String getTitle();
     
-    ConfigBuilder setTitle(Component title);
+    ConfigBuilder setTitle(String title);
+
+    default ConfigBuilder setTitle(CharSequence title) {
+        return setTitle(title.toString());
+    }
     
     boolean isEditable();
     
     ConfigBuilder setEditable(boolean editable);
     
-    ConfigCategory getOrCreateCategory(Component categoryKey);
+    ConfigCategory getOrCreateCategory(String categoryKey);
+
+    default ConfigCategory getOrCreateCategory(CharSequence categoryKey) {
+        return getOrCreateCategory(categoryKey.toString());
+    }
     
-    ConfigBuilder removeCategory(Component categoryKey);
+    ConfigBuilder removeCategory(String categoryKey);
+
+    default ConfigBuilder removeCategory(CharSequence categoryKey) {
+        return removeCategory(categoryKey.toString());
+    }
     
-    ConfigBuilder removeCategoryIfExists(Component categoryKey);
+    ConfigBuilder removeCategoryIfExists(String categoryKey);
+
+    default ConfigBuilder removeCategoryIfExists(CharSequence categoryKey) {
+        return removeCategoryIfExists(categoryKey.toString());
+    }
     
-    boolean hasCategory(Component category);
+    boolean hasCategory(String category);
+
+    default boolean hasCategory(CharSequence category) {
+        return hasCategory(category.toString());
+    }
     
     ConfigBuilder setShouldTabsSmoothScroll(boolean shouldTabsSmoothScroll);
     
@@ -67,41 +80,25 @@ public interface ConfigBuilder {
     
     boolean doesConfirmSave();
     
-    /**
-     * This feature has been removed.
-     */
-    @Deprecated
-    default ConfigBuilder setDoesProcessErrors(boolean processErrors) {
-        return this;
-    }
+    ConfigBuilder setDoesProcessErrors(boolean processErrors);
     
-    /**
-     * This feature has been removed.
-     */
-    @Deprecated
-    default boolean doesProcessErrors() {
-        return false;
-    }
+    boolean doesProcessErrors();
     
-    Identifier getDefaultBackgroundTexture();
+    ResourceLocation getDefaultBackgroundTexture();
     
-    ConfigBuilder setDefaultBackgroundTexture(Identifier texture);
+    ConfigBuilder setDefaultBackgroundTexture(ResourceLocation texture);
     
     Runnable getSavingRunnable();
     
     ConfigBuilder setSavingRunnable(Runnable runnable);
     
-    Consumer<Screen> getAfterInitConsumer();
+    Consumer<GuiScreen> getAfterInitConsumer();
     
-    ConfigBuilder setAfterInitConsumer(Consumer<Screen> afterInitConsumer);
+    ConfigBuilder setAfterInitConsumer(Consumer<GuiScreen> afterInitConsumer);
     
     default ConfigBuilder alwaysShowTabs() {
         return setAlwaysShowTabs(true);
     }
-    
-    void setGlobalized(boolean globalized);
-    
-    void setGlobalizedExpanded(boolean globalizedExpanded);
     
     boolean isAlwaysShowTabs();
     
@@ -117,9 +114,8 @@ public interface ConfigBuilder {
         return setTransparentBackground(false);
     }
     
-    @Deprecated
-    default ConfigEntryBuilderImpl getEntryBuilder() {
-        return (ConfigEntryBuilderImpl) entryBuilder();
+    default ConfigEntryBuilder getEntryBuilder() {
+        return entryBuilder();
     }
     
     default ConfigEntryBuilder entryBuilder() {
@@ -128,5 +124,4 @@ public interface ConfigBuilder {
     
     Screen build();
     
-    boolean hasTransparentBackground();
 }

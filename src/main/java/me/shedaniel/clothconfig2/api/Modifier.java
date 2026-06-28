@@ -1,29 +1,8 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.api;
 
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.platform.Window;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.input.InputQuirks;
-import org.lwjgl.glfw.GLFW;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
+import org.lwjgl.input.Keyboard;
 
 import java.util.Objects;
 
@@ -33,8 +12,9 @@ import java.util.Objects;
  *
  * @author Siphalor
  */
+@OnlyIn(Dist.CLIENT)
 public class Modifier {
-    private final short value;
+    private short value;
     
     /**
      * Constructs a new modifier object by a raw value
@@ -68,12 +48,11 @@ public class Modifier {
     }
     
     public static Modifier current() {
-        Window window = Minecraft.getInstance().getWindow();
-        boolean altDown = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_ALT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_ALT);
-        boolean controlDown = InputQuirks.REPLACE_CTRL_KEY_WITH_CMD_KEY ? InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SUPER) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SUPER)
-                : InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_CONTROL) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_CONTROL);
-        boolean shiftDown = InputConstants.isKeyDown(window, GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(window, GLFW.GLFW_KEY_RIGHT_SHIFT);
-        return Modifier.of(altDown, controlDown, shiftDown);
+        return Modifier.of(
+                Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU),
+                Keyboard.isKeyDown(Keyboard.KEY_LCONTROL) || Keyboard.isKeyDown(Keyboard.KEY_RCONTROL),
+                Keyboard.isKeyDown(Keyboard.KEY_LSHIFT) || Keyboard.isKeyDown(Keyboard.KEY_RSHIFT)
+        );
     }
     
     private static short setFlag(short base, short flag, boolean val) {
@@ -165,4 +144,5 @@ public class Modifier {
     public int hashCode() {
         return Objects.hash(value);
     }
+    
 }

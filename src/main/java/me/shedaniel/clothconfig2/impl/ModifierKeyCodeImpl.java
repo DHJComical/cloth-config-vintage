@@ -1,38 +1,24 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import me.shedaniel.clothconfig2.api.Modifier;
 import me.shedaniel.clothconfig2.api.ModifierKeyCode;
-import net.minecraft.network.chat.Component;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.util.InputMappings;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+import java.util.Objects;
+
+@OnlyIn(Dist.CLIENT)
 public class ModifierKeyCodeImpl implements ModifierKeyCode {
-    private InputConstants.Key keyCode;
+    private InputMappings.Input keyCode;
     private Modifier modifier;
     
     public ModifierKeyCodeImpl() {
     }
     
     @Override
-    public InputConstants.Key getKeyCode() {
+    public InputMappings.Input getKeyCode() {
         return keyCode;
     }
     
@@ -42,9 +28,9 @@ public class ModifierKeyCodeImpl implements ModifierKeyCode {
     }
     
     @Override
-    public ModifierKeyCode setKeyCode(InputConstants.Key keyCode) {
-        this.keyCode = keyCode.getType().getOrCreate(keyCode.getValue());
-        if (keyCode.equals(InputConstants.UNKNOWN))
+    public ModifierKeyCode setKeyCode(InputMappings.Input keyCode) {
+        this.keyCode = keyCode.getType().getOrMakeInput(keyCode.getKeyCode());
+        if (keyCode.equals(InputMappings.INPUT_INVALID))
             setModifier(Modifier.none());
         return this;
     }
@@ -57,18 +43,27 @@ public class ModifierKeyCodeImpl implements ModifierKeyCode {
     
     @Override
     public String toString() {
-        return getLocalizedName().getString();
-    }
-    
-    @Override
-    public Component getLocalizedName() {
-        Component base = this.keyCode.getDisplayName();
+        String string_1 = this.keyCode.getTranslationKey();
+        int int_1 = this.keyCode.getKeyCode();
+        String string_2 = null;
+        switch (this.keyCode.getType()) {
+            case KEYSYM:
+                string_2 = InputMappings.getKeynameFromKeycode(int_1);
+                break;
+            case SCANCODE:
+                string_2 = InputMappings.getKeyNameFromScanCode(int_1);
+                break;
+            case MOUSE:
+                String string_3 = I18n.format(string_1);
+                string_2 = Objects.equals(string_3, string_1) ? I18n.format(InputMappings.Type.MOUSE.getName(), int_1 + 1) : string_3;
+        }
+        String base = string_2 == null ? I18n.format(string_1) : string_2;
         if (modifier.hasShift())
-            base = Component.translatable("modifier.cloth-config.shift", base);
+            base = I18n.format("modifier.cloth-config.shift", base);
         if (modifier.hasControl())
-            base = Component.translatable("modifier.cloth-config.ctrl", base);
+            base = I18n.format("modifier.cloth-config.ctrl", base);
         if (modifier.hasAlt())
-            base = Component.translatable("modifier.cloth-config.alt", base);
+            base = I18n.format("modifier.cloth-config.alt", base);
         return base;
     }
     

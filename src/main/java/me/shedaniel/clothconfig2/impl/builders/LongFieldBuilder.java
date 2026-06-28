@@ -1,57 +1,45 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.LongListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class LongFieldBuilder extends AbstractRangeFieldBuilder<Long, LongListEntry, LongFieldBuilder> {
-    public LongFieldBuilder(Component resetButtonKey, Component fieldNameKey, long value) {
+@OnlyIn(Dist.CLIENT)
+public class LongFieldBuilder extends FieldBuilder<Long, LongListEntry> {
+    
+    private Consumer<Long> saveConsumer = null;
+    private Function<Long, Optional<String[]>> tooltipSupplier = l -> Optional.empty();
+    private final long value;
+    private Long min = null, max = null;
+    
+    public LongFieldBuilder(String resetButtonKey, String fieldNameKey, long value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public LongFieldBuilder setErrorSupplier(Function<Long, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public LongFieldBuilder setErrorSupplier(Function<Long, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public LongFieldBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
     public LongFieldBuilder setSaveConsumer(Consumer<Long> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public LongFieldBuilder setDefaultValue(Supplier<Long> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public LongFieldBuilder setDefaultValue(long defaultValue) {
@@ -59,24 +47,24 @@ public class LongFieldBuilder extends AbstractRangeFieldBuilder<Long, LongListEn
         return this;
     }
     
-    @Override
-    public LongFieldBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public LongFieldBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = l -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public LongFieldBuilder setTooltipSupplier(Function<Long, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public LongFieldBuilder setTooltipSupplier(Function<Long, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public LongFieldBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public LongFieldBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = l -> tooltip;
+        return this;
     }
     
-    @Override
-    public LongFieldBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public LongFieldBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = l -> Optional.ofNullable(tooltip);
+        return this;
     }
     
     public LongFieldBuilder setMin(long min) {
@@ -89,28 +77,28 @@ public class LongFieldBuilder extends AbstractRangeFieldBuilder<Long, LongListEn
         return this;
     }
     
-    @Override
     public LongFieldBuilder removeMin() {
-        return super.removeMin();
+        this.min = null;
+        return this;
     }
     
-    @Override
     public LongFieldBuilder removeMax() {
-        return super.removeMax();
+        this.max = null;
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public LongListEntry build() {
-        LongListEntry entry = new LongListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, getSaveConsumer(), null, isRequireRestart());
+        LongListEntry entry = new LongListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, saveConsumer, null, isRequireRestart());
         if (min != null)
             entry.setMinimum(min);
         if (max != null)
             entry.setMaximum(max);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

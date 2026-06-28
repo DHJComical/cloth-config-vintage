@@ -1,58 +1,45 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.DoubleListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class DoubleFieldBuilder extends AbstractRangeFieldBuilder<Double, DoubleListEntry, DoubleFieldBuilder> {
+@OnlyIn(Dist.CLIENT)
+public class DoubleFieldBuilder extends FieldBuilder<Double, DoubleListEntry> {
     
-    public DoubleFieldBuilder(Component resetButtonKey, Component fieldNameKey, double value) {
+    private Consumer<Double> saveConsumer = null;
+    private Function<Double, Optional<String[]>> tooltipSupplier = d -> Optional.empty();
+    private final double value;
+    private Double min = null, max = null;
+    
+    public DoubleFieldBuilder(String resetButtonKey, String fieldNameKey, double value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public DoubleFieldBuilder setErrorSupplier(Function<Double, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public DoubleFieldBuilder setErrorSupplier(Function<Double, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public DoubleFieldBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
     public DoubleFieldBuilder setSaveConsumer(Consumer<Double> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public DoubleFieldBuilder setDefaultValue(Supplier<Double> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public DoubleFieldBuilder setDefaultValue(double defaultValue) {
@@ -70,48 +57,48 @@ public class DoubleFieldBuilder extends AbstractRangeFieldBuilder<Double, Double
         return this;
     }
     
-    @Override
     public DoubleFieldBuilder removeMin() {
-        return super.removeMin();
+        this.min = null;
+        return this;
     }
     
-    @Override
     public DoubleFieldBuilder removeMax() {
-        return super.removeMax();
+        this.max = null;
+        return this;
     }
     
-    @Override
-    public DoubleFieldBuilder setTooltipSupplier(Function<Double, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public DoubleFieldBuilder setTooltipSupplier(Function<Double, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public DoubleFieldBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public DoubleFieldBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = d -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public DoubleFieldBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public DoubleFieldBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = d -> tooltip;
+        return this;
     }
     
-    @Override
-    public DoubleFieldBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public DoubleFieldBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = d -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public DoubleListEntry build() {
-        DoubleListEntry entry = new DoubleListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, getSaveConsumer(), null, isRequireRestart());
+        DoubleListEntry entry = new DoubleListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, saveConsumer, null, isRequireRestart());
         if (min != null)
             entry.setMinimum(min);
         if (max != null)
             entry.setMaximum(max);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

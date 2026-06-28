@@ -1,27 +1,9 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.IntegerListListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,53 +11,61 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class IntListBuilder extends AbstractRangeListBuilder<Integer, IntegerListListEntry, IntListBuilder> {
+@OnlyIn(Dist.CLIENT)
+public class IntListBuilder extends FieldBuilder<List<Integer>, IntegerListListEntry> {
+    
+    protected Function<Integer, Optional<String>> cellErrorSupplier;
+    private Consumer<List<Integer>> saveConsumer = null;
+    private Function<List<Integer>, Optional<String[]>> tooltipSupplier = list -> Optional.empty();
+    private final List<Integer> value;
+    private boolean expanded = false;
+    private Integer min = null, max = null;
     private Function<IntegerListListEntry, IntegerListListEntry.IntegerListCell> createNewInstance;
+    private String addTooltip = I18n.format("text.cloth-config.list.add"), removeTooltip = I18n.format("text.cloth-config.list.remove");
+    private boolean deleteButtonEnabled = true, insertInFront = true;
     
-    
-    public IntListBuilder(Component resetButtonKey, Component fieldNameKey, List<Integer> value) {
+    public IntListBuilder(String resetButtonKey, String fieldNameKey, List<Integer> value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public Function<Integer, Optional<Component>> getCellErrorSupplier() {
-        return super.getCellErrorSupplier();
+    public Function<Integer, Optional<String>> getCellErrorSupplier() {
+        return cellErrorSupplier;
     }
     
-    @Override
-    public IntListBuilder setCellErrorSupplier(Function<Integer, Optional<Component>> cellErrorSupplier) {
-        return super.setCellErrorSupplier(cellErrorSupplier);
+    public IntListBuilder setCellErrorSupplier(Function<Integer, Optional<String>> cellErrorSupplier) {
+        this.cellErrorSupplier = cellErrorSupplier;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setErrorSupplier(Function<List<Integer>, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public IntListBuilder setErrorSupplier(Function<List<Integer>, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public IntListBuilder setDeleteButtonEnabled(boolean deleteButtonEnabled) {
-        return super.setDeleteButtonEnabled(deleteButtonEnabled);
+        this.deleteButtonEnabled = deleteButtonEnabled;
+        return this;
     }
     
-    @Override
     public IntListBuilder setInsertInFront(boolean insertInFront) {
-        return super.setInsertInFront(insertInFront);
+        this.insertInFront = insertInFront;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setAddButtonTooltip(Component addTooltip) {
-        return super.setAddButtonTooltip(addTooltip);
+    public IntListBuilder setAddButtonTooltip(String addTooltip) {
+        this.addTooltip = addTooltip;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setRemoveButtonTooltip(Component removeTooltip) {
-        return super.setRemoveButtonTooltip(removeTooltip);
+    public IntListBuilder setRemoveButtonTooltip(String removeTooltip) {
+        this.removeTooltip = removeTooltip;
+        return this;
     }
     
-    @Override
     public IntListBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
     public IntListBuilder setCreateNewInstance(Function<IntegerListListEntry, IntegerListListEntry.IntegerListCell> createNewInstance) {
@@ -83,19 +73,19 @@ public class IntListBuilder extends AbstractRangeListBuilder<Integer, IntegerLis
         return this;
     }
     
-    @Override
     public IntListBuilder setExpanded(boolean expanded) {
-        return super.setExpanded(expanded);
+        this.expanded = expanded;
+        return this;
     }
     
-    @Override
     public IntListBuilder setSaveConsumer(Consumer<List<Integer>> saveConsumer) {
-        return (IntListBuilder) super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public IntListBuilder setDefaultValue(Supplier<List<Integer>> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public IntListBuilder setMin(int min) {
@@ -108,59 +98,58 @@ public class IntListBuilder extends AbstractRangeListBuilder<Integer, IntegerLis
         return this;
     }
     
-    @Override
     public IntListBuilder removeMin() {
-        return super.removeMin();
+        this.min = null;
+        return this;
     }
     
-    @Override
     public IntListBuilder removeMax() {
-        return super.removeMax();
+        this.max = null;
+        return this;
     }
     
-    @Override
     public IntListBuilder setDefaultValue(List<Integer> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = () -> defaultValue;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setTooltipSupplier(Function<List<Integer>, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public IntListBuilder setTooltipSupplier(Function<List<Integer>, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public IntListBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = list -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public IntListBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public IntListBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = list -> tooltip;
+        return this;
     }
     
-    @Override
-    public IntListBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public IntListBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = list -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public IntegerListListEntry build() {
-        IntegerListListEntry entry = new IntegerListListEntry(getFieldNameKey(), value, isExpanded(), null, getSaveConsumer(), defaultValue, getResetButtonKey(), isRequireRestart(), isDeleteButtonEnabled(), isInsertInFront());
+        IntegerListListEntry entry = new IntegerListListEntry(getFieldNameKey(), value, expanded, null, saveConsumer, defaultValue, getResetButtonKey(), isRequireRestart(), deleteButtonEnabled, insertInFront);
         if (min != null)
             entry.setMinimum(min);
         if (max != null)
             entry.setMaximum(max);
         if (createNewInstance != null)
             entry.setCreateNewInstance(createNewInstance);
-        entry.setInsertButtonEnabled(isInsertButtonEnabled());
         entry.setCellErrorSupplier(cellErrorSupplier);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
-        entry.setAddTooltip(getAddTooltip());
-        entry.setRemoveTooltip(getRemoveTooltip());
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
+        entry.setAddTooltip(addTooltip);
+        entry.setRemoveTooltip(removeTooltip);
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

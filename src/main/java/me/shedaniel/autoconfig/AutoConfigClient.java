@@ -25,7 +25,7 @@ import me.shedaniel.autoconfig.gui.DefaultGuiTransformers;
 import me.shedaniel.autoconfig.gui.registry.ComposedGuiRegistryAccess;
 import me.shedaniel.autoconfig.gui.registry.DefaultGuiRegistryAccess;
 import me.shedaniel.autoconfig.gui.registry.GuiRegistry;
-import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screen.Screen;
 
 import java.util.HashMap;
 import java.util.Map;

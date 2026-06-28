@@ -1,60 +1,46 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.BooleanListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
+import javax.annotation.Nullable;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class BooleanToggleBuilder extends AbstractFieldBuilder<Boolean, BooleanListEntry, BooleanToggleBuilder> {
-    @Nullable private Function<Boolean, Component> yesNoTextSupplier = null;
+@OnlyIn(Dist.CLIENT)
+public class BooleanToggleBuilder extends FieldBuilder<Boolean, BooleanListEntry> {
     
-    public BooleanToggleBuilder(Component resetButtonKey, Component fieldNameKey, boolean value) {
+    @Nullable private Consumer<Boolean> saveConsumer = null;
+    private Function<Boolean, Optional<String[]>> tooltipSupplier = bool -> Optional.empty();
+    private final boolean value;
+    @Nullable private Function<Boolean, String> yesNoTextSupplier = null;
+    
+    public BooleanToggleBuilder(String resetButtonKey, String fieldNameKey, boolean value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public BooleanToggleBuilder setErrorSupplier(Function<Boolean, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public BooleanToggleBuilder setErrorSupplier(@Nullable Function<Boolean, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public BooleanToggleBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
-    @Override
     public BooleanToggleBuilder setSaveConsumer(Consumer<Boolean> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public BooleanToggleBuilder setDefaultValue(Supplier<Boolean> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public BooleanToggleBuilder setDefaultValue(boolean defaultValue) {
@@ -62,51 +48,51 @@ public class BooleanToggleBuilder extends AbstractFieldBuilder<Boolean, BooleanL
         return this;
     }
     
-    @Override
-    public BooleanToggleBuilder setTooltipSupplier(Function<Boolean, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public BooleanToggleBuilder setTooltipSupplier(Function<Boolean, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public BooleanToggleBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public BooleanToggleBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = bool -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public BooleanToggleBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public BooleanToggleBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = bool -> tooltip;
+        return this;
     }
     
-    @Override
-    public BooleanToggleBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public BooleanToggleBuilder setTooltip(@Nullable String... tooltip) {
+        this.tooltipSupplier = bool -> Optional.ofNullable(tooltip);
+        return this;
     }
     
     @Nullable
-    public Function<Boolean, Component> getYesNoTextSupplier() {
+    public Function<Boolean, String> getYesNoTextSupplier() {
         return yesNoTextSupplier;
     }
     
-    public BooleanToggleBuilder setYesNoTextSupplier(@Nullable Function<Boolean, Component> yesNoTextSupplier) {
+    public BooleanToggleBuilder setYesNoTextSupplier(@Nullable Function<Boolean, String> yesNoTextSupplier) {
         this.yesNoTextSupplier = yesNoTextSupplier;
         return this;
     }
     
-    @NotNull
+    
     @Override
     public BooleanListEntry build() {
-        BooleanListEntry entry = new BooleanListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, getSaveConsumer(), null, isRequireRestart()) {
+        BooleanListEntry entry = new BooleanListEntry(getFieldNameKey(), value, getResetButtonKey(), defaultValue, saveConsumer, null, isRequireRestart()) {
             @Override
-            public Component getYesNoText(boolean bool) {
+            public String getYesNoText(boolean bool) {
                 if (yesNoTextSupplier == null)
                     return super.getYesNoText(bool);
                 return yesNoTextSupplier.apply(bool);
             }
         };
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }

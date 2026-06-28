@@ -1,27 +1,9 @@
-/*
- * This file is part of Cloth Config.
- * Copyright (C) 2020 - 2021 shedaniel
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 3 of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with this program; if not, write to the Free Software Foundation,
- * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- */
-
 package me.shedaniel.clothconfig2.impl.builders;
 
 import me.shedaniel.clothconfig2.gui.entries.FloatListListEntry;
-import net.minecraft.network.chat.Component;
-import org.jetbrains.annotations.NotNull;
+import net.minecraft.client.resources.I18n;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,52 +11,61 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-public class FloatListBuilder extends AbstractRangeListBuilder<Float, FloatListListEntry, FloatListBuilder> {
-    private Function<FloatListListEntry, FloatListListEntry.FloatListCell> createNewInstance;
+@OnlyIn(Dist.CLIENT)
+public class FloatListBuilder extends FieldBuilder<List<Float>, FloatListListEntry> {
     
-    public FloatListBuilder(Component resetButtonKey, Component fieldNameKey, List<Float> value) {
+    protected Function<Float, Optional<String>> cellErrorSupplier;
+    private Consumer<List<Float>> saveConsumer = null;
+    private Function<List<Float>, Optional<String[]>> tooltipSupplier = list -> Optional.empty();
+    private final List<Float> value;
+    private boolean expanded = false;
+    private Float min = null, max = null;
+    private Function<FloatListListEntry, FloatListListEntry.FloatListCell> createNewInstance;
+    private String addTooltip = I18n.format("text.cloth-config.list.add"), removeTooltip = I18n.format("text.cloth-config.list.remove");
+    private boolean deleteButtonEnabled = true, insertInFront = true;
+    
+    public FloatListBuilder(String resetButtonKey, String fieldNameKey, List<Float> value) {
         super(resetButtonKey, fieldNameKey);
         this.value = value;
     }
     
-    @Override
-    public Function<Float, Optional<Component>> getCellErrorSupplier() {
-        return super.getCellErrorSupplier();
+    public Function<Float, Optional<String>> getCellErrorSupplier() {
+        return cellErrorSupplier;
     }
     
-    @Override
-    public FloatListBuilder setCellErrorSupplier(Function<Float, Optional<Component>> cellErrorSupplier) {
-        return super.setCellErrorSupplier(cellErrorSupplier);
+    public FloatListBuilder setCellErrorSupplier(Function<Float, Optional<String>> cellErrorSupplier) {
+        this.cellErrorSupplier = cellErrorSupplier;
+        return this;
     }
     
-    @Override
     public FloatListBuilder setDeleteButtonEnabled(boolean deleteButtonEnabled) {
-        return super.setDeleteButtonEnabled(deleteButtonEnabled);
+        this.deleteButtonEnabled = deleteButtonEnabled;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setErrorSupplier(Function<List<Float>, Optional<Component>> errorSupplier) {
-        return super.setErrorSupplier(errorSupplier);
+    public FloatListBuilder setErrorSupplier(Function<List<Float>, Optional<String>> errorSupplier) {
+        this.errorSupplier = errorSupplier;
+        return this;
     }
     
-    @Override
     public FloatListBuilder setInsertInFront(boolean insertInFront) {
-        return super.setInsertInFront(insertInFront);
+        this.insertInFront = insertInFront;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setAddButtonTooltip(Component addTooltip) {
-        return super.setAddButtonTooltip(addTooltip);
+    public FloatListBuilder setAddButtonTooltip(String addTooltip) {
+        this.addTooltip = addTooltip;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setRemoveButtonTooltip(Component removeTooltip) {
-        return super.setRemoveButtonTooltip(removeTooltip);
+    public FloatListBuilder setRemoveButtonTooltip(String removeTooltip) {
+        this.removeTooltip = removeTooltip;
+        return this;
     }
     
-    @Override
     public FloatListBuilder requireRestart() {
-        return super.requireRestart();
+        requireRestart(true);
+        return this;
     }
     
     public FloatListBuilder setCreateNewInstance(Function<FloatListListEntry, FloatListListEntry.FloatListCell> createNewInstance) {
@@ -82,19 +73,19 @@ public class FloatListBuilder extends AbstractRangeListBuilder<Float, FloatListL
         return this;
     }
     
-    @Override
     public FloatListBuilder setExpanded(boolean expanded) {
-        return super.setExpanded(expanded);
+        this.expanded = expanded;
+        return this;
     }
     
-    @Override
     public FloatListBuilder setSaveConsumer(Consumer<List<Float>> saveConsumer) {
-        return super.setSaveConsumer(saveConsumer);
+        this.saveConsumer = saveConsumer;
+        return this;
     }
     
-    @Override
     public FloatListBuilder setDefaultValue(Supplier<List<Float>> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = defaultValue;
+        return this;
     }
     
     public FloatListBuilder setMin(float min) {
@@ -107,59 +98,58 @@ public class FloatListBuilder extends AbstractRangeListBuilder<Float, FloatListL
         return this;
     }
     
-    @Override
     public FloatListBuilder removeMin() {
-        return super.removeMin();
+        this.min = null;
+        return this;
     }
     
-    @Override
     public FloatListBuilder removeMax() {
-        return super.removeMax();
+        this.max = null;
+        return this;
     }
     
-    @Override
     public FloatListBuilder setDefaultValue(List<Float> defaultValue) {
-        return super.setDefaultValue(defaultValue);
+        this.defaultValue = () -> defaultValue;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setTooltipSupplier(Function<List<Float>, Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public FloatListBuilder setTooltipSupplier(Supplier<Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = list -> tooltipSupplier.get();
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setTooltipSupplier(Supplier<Optional<Component[]>> tooltipSupplier) {
-        return super.setTooltipSupplier(tooltipSupplier);
+    public FloatListBuilder setTooltipSupplier(Function<List<Float>, Optional<String[]>> tooltipSupplier) {
+        this.tooltipSupplier = tooltipSupplier;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setTooltip(Optional<Component[]> tooltip) {
-        return super.setTooltip(tooltip);
+    public FloatListBuilder setTooltip(Optional<String[]> tooltip) {
+        this.tooltipSupplier = list -> tooltip;
+        return this;
     }
     
-    @Override
-    public FloatListBuilder setTooltip(Component... tooltip) {
-        return super.setTooltip(tooltip);
+    public FloatListBuilder setTooltip(String... tooltip) {
+        this.tooltipSupplier = list -> Optional.ofNullable(tooltip);
+        return this;
     }
     
-    @NotNull
+    
     @Override
     public FloatListListEntry build() {
-        FloatListListEntry entry = new FloatListListEntry(getFieldNameKey(), value, isExpanded(), null, getSaveConsumer(), defaultValue, getResetButtonKey(), isRequireRestart(), isDeleteButtonEnabled(), isInsertInFront());
+        FloatListListEntry entry = new FloatListListEntry(getFieldNameKey(), value, expanded, null, saveConsumer, defaultValue, getResetButtonKey(), isRequireRestart(), deleteButtonEnabled, insertInFront);
         if (min != null)
             entry.setMinimum(min);
         if (max != null)
             entry.setMaximum(max);
         if (createNewInstance != null)
             entry.setCreateNewInstance(createNewInstance);
-        entry.setInsertButtonEnabled(isInsertButtonEnabled());
         entry.setCellErrorSupplier(cellErrorSupplier);
-        entry.setTooltipSupplier(() -> getTooltipSupplier().apply(entry.getValue()));
-        entry.setAddTooltip(getAddTooltip());
-        entry.setRemoveTooltip(getRemoveTooltip());
+        entry.setTooltipSupplier(() -> tooltipSupplier.apply(entry.getValue()));
+        entry.setAddTooltip(addTooltip);
+        entry.setRemoveTooltip(removeTooltip);
         if (errorSupplier != null)
             entry.setErrorSupplier(() -> errorSupplier.apply(entry.getValue()));
-        return finishBuilding(entry);
+        return entry;
     }
     
 }
