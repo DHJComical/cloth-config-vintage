@@ -66,6 +66,7 @@ public final class ForgeConfigScreenFactory {
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(parentScreen)
                 .setTitle(title)
+                .transparentBackground()
                 .setDoesConfirmSave(true)
                 .setSavingRunnable(() -> saveAndPostConfigEvents(modId, saveState));
 
@@ -96,6 +97,7 @@ public final class ForgeConfigScreenFactory {
         ConfigBuilder builder = ConfigBuilder.create()
                 .setParentScreen(guiConfig.parentScreen)
                 .setTitle(guiConfig.title)
+                .transparentBackground()
                 .setDoesConfirmSave(true)
                 .setSavingRunnable(() -> saveAndPostConfigEvents(guiConfig.modID, saveState));
 
