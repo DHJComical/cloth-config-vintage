@@ -646,10 +646,6 @@ public final class ForgeConfigScreenFactory {
                 return translated;
             }
         }
-        String qualifiedName = element.getQualifiedName();
-        if (qualifiedName != null && !qualifiedName.isEmpty()) {
-            return qualifiedName;
-        }
         return element.getName();
     }
 
