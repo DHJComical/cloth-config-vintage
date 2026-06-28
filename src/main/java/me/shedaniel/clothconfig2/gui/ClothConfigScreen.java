@@ -5,6 +5,7 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.mojang.blaze3d.systems.RenderSystem;
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
+import me.shedaniel.clothconfig2.ClothConfigInitializer;
 import me.shedaniel.clothconfig2.api.*;
 import me.shedaniel.clothconfig2.gui.entries.KeyCodeEntry;
 import me.shedaniel.clothconfig2.gui.widget.DynamicElementListWidget;
@@ -648,6 +649,16 @@ public abstract class ClothConfigScreen extends Screen {
     }
     
     public class ListWidget<R extends DynamicElementListWidget.ElementEntry<R>> extends DynamicElementListWidget<R> {
+        private boolean hasCurrent;
+        private double currentX;
+        private double currentY;
+        private double currentWidth;
+        private double currentHeight;
+        public Rectangle target;
+        public Rectangle thisTimeTarget;
+        public long highlightStart;
+        public long highlightDuration;
+
         public ListWidget(Minecraft client, int width, int height, int top, int bottom, ResourceLocation backgroundLocation) {
             super(client, width, height, top, bottom, backgroundLocation);
             visible = false;
@@ -669,6 +680,33 @@ public abstract class ClothConfigScreen extends Screen {
         
         protected final void clearStuff() {
             this.clearItems();
+        }
+
+        @Override
+        protected void renderList(int startX, int startY, int mouseX, int mouseY, float delta) {
+            thisTimeTarget = null;
+            if (hasCurrent) {
+                fillGradient((int) currentX, (int) currentY, (int) (currentX + currentWidth), (int) (currentY + currentHeight), 0x24FFFFFF, 0x24FFFFFF);
+            }
+            super.renderList(startX, startY, mouseX, mouseY, delta);
+            if (thisTimeTarget != null && !thisTimeTarget.equals(target)) {
+                if (!hasCurrent) {
+                    currentX = thisTimeTarget.x;
+                    currentY = thisTimeTarget.y;
+                    currentWidth = thisTimeTarget.width;
+                    currentHeight = thisTimeTarget.height;
+                    hasCurrent = true;
+                }
+                target = thisTimeTarget.clone();
+                highlightStart = System.currentTimeMillis();
+                highlightDuration = 40L;
+            } else if (hasCurrent && target != null) {
+                double amount = Math.min((System.currentTimeMillis() - highlightStart) / (double) highlightDuration * delta * 3, 1d);
+                currentX = ClothConfigInitializer.expoEase(currentX, target.x, amount);
+                currentY = ClothConfigInitializer.expoEase(currentY, target.y, amount);
+                currentWidth = ClothConfigInitializer.expoEase(currentWidth, target.width, amount);
+                currentHeight = ClothConfigInitializer.expoEase(currentHeight, target.height, amount);
+            }
         }
         
         @Override
