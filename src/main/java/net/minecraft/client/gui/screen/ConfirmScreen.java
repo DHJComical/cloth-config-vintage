@@ -2,6 +2,9 @@ package net.minecraft.client.gui.screen;
 
 import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.util.text.TranslationTextComponent;
+
+import java.util.List;
 
 public class ConfirmScreen extends Screen {
     private final BooleanConsumer callback;
@@ -20,15 +23,35 @@ public class ConfirmScreen extends Screen {
 
     @Override
     protected void init() {
-        addButton(new Button(width / 2 - 105, height / 6 + 96, 100, 20, yesText, button -> callback.accept(true)));
-        addButton(new Button(width / 2 + 5, height / 6 + 96, 100, 20, noText, button -> callback.accept(false)));
+        int minButtonWidth = 150;
+        int maxButtonWidth = Math.max(minButtonWidth, (width - 20) / 2);
+        int leftButtonWidth = Math.min(maxButtonWidth, Math.max(minButtonWidth, fontRenderer.getStringWidth(yesText) + 20));
+        int rightButtonWidth = Math.min(maxButtonWidth, Math.max(minButtonWidth, fontRenderer.getStringWidth(noText) + 20));
+        int gap = 10;
+        int totalWidth = leftButtonWidth + rightButtonWidth + gap;
+        int startX = (width - totalWidth) / 2;
+        int buttonY = height / 6 + 96;
+        addButton(new Button(startX, buttonY, leftButtonWidth, 20, yesText, button -> callback.accept(true)));
+        addButton(new Button(startX + leftButtonWidth + gap, buttonY, rightButtonWidth, 20, noText, button -> callback.accept(false)));
     }
 
     @Override
     public void render(int mouseX, int mouseY, float delta) {
         drawDefaultBackground();
-        drawCenteredString(fontRenderer, String.valueOf(title), width / 2, height / 6 + 40, 0xffffff);
-        drawCenteredString(fontRenderer, String.valueOf(message), width / 2, height / 6 + 60, 0xffffff);
+        drawCenteredString(fontRenderer, stringify(title), width / 2, 70, 0xffffff);
+        List<String> lines = fontRenderer.listFormattedStringToWidth(stringify(message), width - 50);
+        int lineY = 90;
+        for (String line : lines) {
+            drawCenteredString(fontRenderer, line, width / 2, lineY, 0xffffff);
+            lineY += fontRenderer.FONT_HEIGHT;
+        }
         super.render(mouseX, mouseY, delta);
+    }
+
+    private static String stringify(Object text) {
+        if (text instanceof TranslationTextComponent) {
+            return ((TranslationTextComponent) text).getString();
+        }
+        return String.valueOf(text);
     }
 }
