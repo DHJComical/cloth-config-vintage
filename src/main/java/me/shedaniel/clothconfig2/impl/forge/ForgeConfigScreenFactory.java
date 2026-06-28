@@ -19,18 +19,31 @@ import me.shedaniel.clothconfig2.impl.builders.SubCategoryBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
+import net.minecraftforge.common.ForgeChunkManager;
+import net.minecraftforge.common.ForgeModContainer;
+import net.minecraftforge.common.ForgeVersion;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.config.Config;
+import net.minecraftforge.common.config.ConfigElement;
 import net.minecraftforge.common.config.ConfigManager;
+import net.minecraftforge.common.config.Configuration;
+import net.minecraftforge.common.config.Property;
+import net.minecraftforge.fml.client.config.DummyConfigElement.DummyCategoryElement;
+import net.minecraftforge.fml.client.config.GuiConfig;
 import net.minecraftforge.fml.client.config.IConfigElement;
 import net.minecraftforge.fml.client.event.ConfigChangedEvent;
 import net.minecraftforge.fml.common.Loader;
+import net.minecraftforge.fml.common.ModContainer;
 import net.minecraftforge.fml.common.eventhandler.Event;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.regex.Pattern;
@@ -38,6 +51,12 @@ import java.util.stream.Collectors;
 
 public final class ForgeConfigScreenFactory {
     private static final String FALLBACK_CATEGORY = "text.cloth-config.config";
+    private static final String FORGE_GENERAL_CATEGORY_ELEMENT = "forgeCfg";
+    private static final String FORGE_CLIENT_CATEGORY_ELEMENT = "forgeClientCfg";
+    private static final String FORGE_CHUNK_LOADING_CATEGORY_ELEMENT = "forgeChunkLoadingCfg";
+    private static final String FORGE_VERSION_CHECK_CATEGORY_ELEMENT = "forgeVersionCheckCfg";
+    private static final String FORGE_CHUNK_LOADING_MOD_CATEGORY_ELEMENT = "forgeChunkLoadingModCfg";
+    private static final String FORGE_CHUNK_LOADING_CONFIG_ID = "chunkLoader";
 
     private ForgeConfigScreenFactory() {
     }
@@ -72,6 +91,187 @@ public final class ForgeConfigScreenFactory {
         return builder.build();
     }
 
+    public static GuiScreen createFromGuiConfig(GuiConfig guiConfig) {
+        SaveState saveState = new SaveState();
+        ConfigBuilder builder = ConfigBuilder.create()
+                .setParentScreen(guiConfig.parentScreen)
+                .setTitle(guiConfig.title)
+                .setDoesConfirmSave(true)
+                .setSavingRunnable(() -> saveAndPostConfigEvents(guiConfig.modID, saveState));
+
+        ConfigEntryBuilder entryBuilder = builder.entryBuilder();
+        boolean addedEntries = addGuiConfigElements(builder, entryBuilder, guiConfig, saveState);
+        if (!addedEntries) {
+            addText(builder.getOrCreateCategory(FALLBACK_CATEGORY), "No visible Forge config entries were found for " + guiConfig.modID + ".");
+        }
+
+        return builder.build();
+    }
+
+    private static boolean addGuiConfigElements(ConfigBuilder builder, ConfigEntryBuilder entryBuilder, GuiConfig guiConfig, SaveState saveState) {
+        if (ForgeVersion.MOD_ID.equals(guiConfig.modID)) {
+            return addForgeOwnedElements(builder, entryBuilder, guiConfig, saveState);
+        }
+
+        List<IConfigElement> elements = visibleChildren(guiConfig.configElements);
+        if (!elements.isEmpty() && elements.stream().noneMatch(IConfigElement::isProperty)) {
+            boolean added = false;
+            for (IConfigElement element : elements) {
+                ConfigCategory category = builder.getOrCreateCategory(displayName(element));
+                added |= addElements(
+                        category,
+                        entryBuilder,
+                        element.getChildElements(),
+                        guiConfig.allRequireWorldRestart || element.requiresWorldRestart(),
+                        guiConfig.allRequireMcRestart || element.requiresMcRestart(),
+                        guiConfig.configID,
+                        saveState);
+            }
+            return added;
+        } else {
+            String categoryName = titleWithSubtitle(guiConfig);
+            ConfigCategory category = builder.getOrCreateCategory(categoryName);
+            return addElements(category, entryBuilder, elements,
+                    guiConfig.allRequireWorldRestart,
+                    guiConfig.allRequireMcRestart,
+                    guiConfig.configID,
+                    saveState);
+        }
+    }
+
+    private static boolean addForgeOwnedElements(ConfigBuilder builder, ConfigEntryBuilder entryBuilder, GuiConfig guiConfig, SaveState saveState) {
+        boolean added = false;
+        for (IConfigElement element : visibleChildren(guiConfig.configElements)) {
+            switch (element.getName()) {
+                case FORGE_GENERAL_CATEGORY_ELEMENT:
+                    added |= addForgeCategory(
+                            builder,
+                            entryBuilder,
+                            element,
+                            new ConfigElement(ForgeModContainer.getConfig().getCategory(Configuration.CATEGORY_GENERAL)).getChildElements(),
+                            Configuration.CATEGORY_GENERAL,
+                            guiConfig,
+                            saveState);
+                    break;
+                case FORGE_CLIENT_CATEGORY_ELEMENT:
+                    added |= addForgeCategory(
+                            builder,
+                            entryBuilder,
+                            element,
+                            new ConfigElement(ForgeModContainer.getConfig().getCategory(Configuration.CATEGORY_CLIENT)).getChildElements(),
+                            Configuration.CATEGORY_CLIENT,
+                            guiConfig,
+                            saveState);
+                    break;
+                case FORGE_CHUNK_LOADING_CATEGORY_ELEMENT:
+                    added |= addForgeCategory(
+                            builder,
+                            entryBuilder,
+                            element,
+                            createForgeChunkLoadingElements(),
+                            FORGE_CHUNK_LOADING_CONFIG_ID,
+                            guiConfig,
+                            saveState);
+                    break;
+                case FORGE_VERSION_CHECK_CATEGORY_ELEMENT:
+                    added |= addForgeCategory(
+                            builder,
+                            entryBuilder,
+                            element,
+                            createForgeVersionCheckElements(),
+                            ForgeModContainer.VERSION_CHECK_CAT,
+                            guiConfig,
+                            saveState);
+                    break;
+                default:
+                    ConfigCategory category = builder.getOrCreateCategory(displayName(element));
+                    AbstractConfigListEntry entry = createEntry(
+                            entryBuilder,
+                            element,
+                            guiConfig.allRequireWorldRestart,
+                            guiConfig.allRequireMcRestart,
+                            guiConfig.configID,
+                            saveState);
+                    if (entry != null) {
+                        category.addEntry(entry);
+                        added = true;
+                    }
+                    break;
+            }
+        }
+        return added;
+    }
+
+    private static boolean addForgeCategory(
+            ConfigBuilder builder,
+            ConfigEntryBuilder entryBuilder,
+            IConfigElement categoryElement,
+            List<IConfigElement> elements,
+            String configId,
+            GuiConfig guiConfig,
+            SaveState saveState) {
+        ConfigCategory category = builder.getOrCreateCategory(displayName(categoryElement));
+        boolean forceWorldRestart = guiConfig.allRequireWorldRestart || categoryElement.requiresWorldRestart();
+        boolean forceMcRestart = guiConfig.allRequireMcRestart || categoryElement.requiresMcRestart();
+        if (ForgeModContainer.VERSION_CHECK_CAT.equals(configId)) {
+            forceWorldRestart = true;
+            forceMcRestart = true;
+        }
+        boolean added = addElements(
+                category,
+                entryBuilder,
+                elements,
+                forceWorldRestart,
+                forceMcRestart,
+                configId,
+                saveState);
+        if (!added) {
+            addText(category, "No visible Forge config entries were found in " + displayName(categoryElement) + ".");
+            return true;
+        }
+        return true;
+    }
+
+    private static List<IConfigElement> createForgeChunkLoadingElements() {
+        List<IConfigElement> elements = new ArrayList<>();
+        elements.add(new DummyCategoryElement(
+                FORGE_CHUNK_LOADING_MOD_CATEGORY_ELEMENT,
+                "forge.configgui.ctgy.forgeChunkLoadingModConfig",
+                createForgeChunkLoadingModElements()));
+        elements.addAll(new ConfigElement(ForgeChunkManager.getDefaultsCategory()).getChildElements());
+        return elements;
+    }
+
+    private static List<IConfigElement> createForgeChunkLoadingModElements() {
+        List<IConfigElement> elements = new ArrayList<>();
+        for (net.minecraftforge.common.config.ConfigCategory category : ForgeChunkManager.getModCategories()) {
+            elements.add(new ConfigElement(category));
+        }
+        return elements;
+    }
+
+    private static List<IConfigElement> createForgeVersionCheckElements() {
+        net.minecraftforge.common.config.ConfigCategory cfg = ForgeModContainer.getConfig().getCategory(ForgeModContainer.VERSION_CHECK_CAT);
+        Map<String, Property> values = new HashMap<>(cfg.getValues());
+        values.remove("Global");
+
+        Property global = ForgeModContainer.getConfig().get(ForgeModContainer.VERSION_CHECK_CAT, "Global", true);
+        List<Property> props = new ArrayList<>();
+        for (ModContainer mod : ForgeVersion.gatherMods().keySet()) {
+            values.remove(mod.getModId());
+            props.add(ForgeModContainer.getConfig().get(ForgeModContainer.VERSION_CHECK_CAT, mod.getModId(), true));
+        }
+        props.addAll(values.values());
+        props.sort(Comparator.comparing(Property::getName));
+
+        List<IConfigElement> elements = new ArrayList<>();
+        elements.add(new ConfigElement(global));
+        for (Property prop : props) {
+            elements.add(new ConfigElement(prop));
+        }
+        return elements;
+    }
+
     private static boolean addRootElement(ConfigBuilder builder, ConfigEntryBuilder entryBuilder, IConfigElement root, SaveState saveState) {
         List<IConfigElement> children = visibleChildren(root);
         if (children.isEmpty()) {
@@ -80,7 +280,7 @@ public final class ForgeConfigScreenFactory {
 
         boolean rootWorldRestart = root.requiresWorldRestart();
         boolean rootMcRestart = root.requiresMcRestart();
-        boolean allChildrenAreCategories = children.stream().allMatch(child -> !child.isProperty());
+        boolean allChildrenAreCategories = children.stream().noneMatch(IConfigElement::isProperty);
         if (allChildrenAreCategories) {
             boolean added = false;
             for (IConfigElement child : children) {
@@ -88,13 +288,14 @@ public final class ForgeConfigScreenFactory {
                 added |= addElements(category, entryBuilder, child.getChildElements(),
                         rootWorldRestart || child.requiresWorldRestart(),
                         rootMcRestart || child.requiresMcRestart(),
+                        null,
                         saveState);
             }
             return added;
         }
 
         ConfigCategory category = builder.getOrCreateCategory(displayName(root));
-        return addElements(category, entryBuilder, children, rootWorldRestart, rootMcRestart, saveState);
+        return addElements(category, entryBuilder, children, rootWorldRestart, rootMcRestart, null, saveState);
     }
 
     private static boolean addElements(
@@ -103,10 +304,11 @@ public final class ForgeConfigScreenFactory {
             List<IConfigElement> elements,
             boolean forceWorldRestart,
             boolean forceMcRestart,
+            String configId,
             SaveState saveState) {
         boolean added = false;
         for (IConfigElement element : visibleChildren(elements)) {
-            AbstractConfigListEntry entry = createEntry(entryBuilder, element, forceWorldRestart, forceMcRestart, saveState);
+            AbstractConfigListEntry entry = createEntry(entryBuilder, element, forceWorldRestart, forceMcRestart, configId, saveState);
             if (entry != null) {
                 category.addEntry(entry);
                 added = true;
@@ -120,6 +322,7 @@ public final class ForgeConfigScreenFactory {
             IConfigElement element,
             boolean forceWorldRestart,
             boolean forceMcRestart,
+            String configId,
             SaveState saveState) {
         if (!element.isProperty()) {
             SubCategoryBuilder subCategory = builder.startSubCategory(displayName(element)).setExpanded(false);
@@ -131,6 +334,7 @@ public final class ForgeConfigScreenFactory {
                         child,
                         forceWorldRestart || element.requiresWorldRestart(),
                         forceMcRestart || element.requiresMcRestart(),
+                        configId,
                         saveState);
                 if (childEntry != null) {
                     subCategory.add(childEntry);
@@ -140,14 +344,14 @@ public final class ForgeConfigScreenFactory {
             return added ? subCategory.build() : null;
         }
 
-        if (element.getConfigEntryClass() != null || element.getArrayEntryClass() != null) {
+        if (element.getArrayEntryClass() != null) {
             return unsupportedEntry(element, "Custom Forge config GUI entries are not supported by the Cloth Config replacement.");
         }
 
         try {
             return element.isList()
-                    ? createListEntry(builder, element, forceWorldRestart, forceMcRestart, saveState)
-                    : createValueEntry(builder, element, forceWorldRestart, forceMcRestart, saveState);
+                    ? createListEntry(builder, element, forceWorldRestart, forceMcRestart, configId, saveState)
+                    : createValueEntry(builder, element, forceWorldRestart, forceMcRestart, configId, saveState);
         } catch (RuntimeException e) {
             return unsupportedEntry(element, "Unable to convert Forge config entry: " + e.getMessage());
         }
@@ -158,6 +362,7 @@ public final class ForgeConfigScreenFactory {
             IConfigElement element,
             boolean forceWorldRestart,
             boolean forceMcRestart,
+            String configId,
             SaveState saveState) {
         String name = displayName(element);
         boolean requiresWorldRestart = forceWorldRestart || element.requiresWorldRestart();
@@ -168,7 +373,7 @@ public final class ForgeConfigScreenFactory {
                 BooleanToggleBuilder toggle = builder.startBooleanToggle(name, value.value);
                 tooltip(element).ifPresent(toggle::setTooltip);
                 defaultValue(element, Boolean.class).ifPresent(toggle::setDefaultValue);
-                toggle.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, saveState));
+                toggle.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, configId, saveState));
                 if (requiresRestart) {
                     toggle.requireRestart();
                 }
@@ -182,7 +387,7 @@ public final class ForgeConfigScreenFactory {
                     IntSliderBuilder slider = builder.startIntSlider(name, value.value, min, max);
                     tooltip(element).ifPresent(slider::setTooltip);
                     defaultValue(element, Integer.class).ifPresent(slider::setDefaultValue);
-                    slider.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, saveState));
+                    slider.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, configId, saveState));
                     if (requiresRestart) {
                         slider.requireRestart();
                     }
@@ -191,7 +396,7 @@ public final class ForgeConfigScreenFactory {
                 IntFieldBuilder field = builder.startIntField(name, value.value).setMin(min).setMax(max);
                 tooltip(element).ifPresent(field::setTooltip);
                 defaultValue(element, Integer.class).ifPresent(field::setDefaultValue);
-                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, saveState));
+                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, configId, saveState));
                 if (requiresRestart) {
                     field.requireRestart();
                 }
@@ -204,7 +409,7 @@ public final class ForgeConfigScreenFactory {
                         .setMax(parseDouble(element.getMaxValue(), Double.MAX_VALUE));
                 tooltip(element).ifPresent(field::setTooltip);
                 defaultValue(element, Double.class).ifPresent(field::setDefaultValue);
-                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, saveState));
+                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, configId, saveState));
                 if (requiresRestart) {
                     field.requireRestart();
                 }
@@ -212,7 +417,7 @@ public final class ForgeConfigScreenFactory {
             }
             case COLOR: {
                 if (hasValidValues(element)) {
-                    return createStringSelector(builder, element, requiresWorldRestart, requiresRestart, saveState);
+                    return createStringSelector(builder, element, requiresWorldRestart, requiresRestart, configId, saveState);
                 }
                 ValueState<Integer> value = new ValueState<>(parseColor(element.get(), element.getDefault()));
                 ColorFieldBuilder color = builder.startColorField(name, value.value);
@@ -222,7 +427,7 @@ public final class ForgeConfigScreenFactory {
                     if (!Objects.equals(value.value, newValue)) {
                         element.set(String.format(Locale.ROOT, "%06x", newValue & 0xFFFFFF));
                         value.value = newValue;
-                        saveState.mark(requiresRestart);
+                        saveState.mark(configId, requiresRestart);
                     }
                 });
                 if (requiresRestart) {
@@ -233,7 +438,7 @@ public final class ForgeConfigScreenFactory {
             case MOD_ID:
             case STRING:
                 if (hasValidValues(element)) {
-                    return createStringSelector(builder, element, requiresWorldRestart, requiresRestart, saveState);
+                    return createStringSelector(builder, element, requiresWorldRestart, requiresRestart, configId, saveState);
                 }
                 ValueState<String> value = new ValueState<>(Objects.toString(element.get(), ""));
                 StringFieldBuilder field = builder.startStrField(name, value.value);
@@ -243,7 +448,7 @@ public final class ForgeConfigScreenFactory {
                 if (pattern != null) {
                     field.setErrorSupplier(newValue -> pattern.matcher(newValue).matches() ? Optional.empty() : Optional.of(I18n.format("fml.configgui.tooltip.invalidValue")));
                 }
-                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, saveState));
+                field.setSaveConsumer(newValue -> saveValue(element, value, newValue, requiresRestart, configId, saveState));
                 if (requiresRestart) {
                     field.requireRestart();
                 }
@@ -258,6 +463,7 @@ public final class ForgeConfigScreenFactory {
             IConfigElement element,
             boolean requiresWorldRestart,
             boolean requiresRestart,
+            String configId,
             SaveState saveState) {
         String[] values = element.getValidValues();
         ValueState<String> selected = new ValueState<>(Objects.toString(element.get(), values.length > 0 ? values[0] : ""));
@@ -275,7 +481,7 @@ public final class ForgeConfigScreenFactory {
                 return value;
             });
         }
-        selector.setSaveConsumer(value -> saveValue(element, selected, value, requiresRestart, saveState));
+        selector.setSaveConsumer(value -> saveValue(element, selected, value, requiresRestart, configId, saveState));
         if (requiresRestart) {
             selector.requireRestart();
         }
@@ -287,6 +493,7 @@ public final class ForgeConfigScreenFactory {
             IConfigElement element,
             boolean forceWorldRestart,
             boolean forceMcRestart,
+            String configId,
             SaveState saveState) {
         String name = displayName(element);
         boolean requiresWorldRestart = forceWorldRestart || element.requiresWorldRestart();
@@ -299,7 +506,7 @@ public final class ForgeConfigScreenFactory {
                         .setDeleteButtonEnabled(!fixedLength)
                         .setInsertInFront(!fixedLength)
                         .setCellErrorSupplier(newValue -> isBoolean(newValue) ? Optional.empty() : Optional.of(I18n.format("text.cloth-config.error.not_valid_boolean")))
-                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, saveState));
+                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, configId, saveState));
                 tooltip(element).ifPresent(list::setTooltip);
                 list.setDefaultValue(toStringList(element.getDefaults()));
                 if (requiresRestart) {
@@ -314,7 +521,7 @@ public final class ForgeConfigScreenFactory {
                         .setInsertInFront(!fixedLength)
                         .setMin(parseInt(element.getMinValue(), Integer.MIN_VALUE))
                         .setMax(parseInt(element.getMaxValue(), Integer.MAX_VALUE))
-                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, saveState));
+                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, configId, saveState));
                 tooltip(element).ifPresent(list::setTooltip);
                 list.setDefaultValue(toIntegerList(element.getDefaults()));
                 if (requiresRestart) {
@@ -329,7 +536,7 @@ public final class ForgeConfigScreenFactory {
                         .setInsertInFront(!fixedLength)
                         .setMin(parseDouble(element.getMinValue(), -Double.MAX_VALUE))
                         .setMax(parseDouble(element.getMaxValue(), Double.MAX_VALUE))
-                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, saveState));
+                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, configId, saveState));
                 tooltip(element).ifPresent(list::setTooltip);
                 list.setDefaultValue(toDoubleList(element.getDefaults()));
                 if (requiresRestart) {
@@ -344,7 +551,7 @@ public final class ForgeConfigScreenFactory {
                 StringListBuilder list = builder.startStrList(name, value.value)
                         .setDeleteButtonEnabled(!fixedLength)
                         .setInsertInFront(!fixedLength)
-                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, saveState));
+                        .setSaveConsumer(values -> saveList(element, value, values, requiresRestart, configId, saveState));
                 tooltip(element).ifPresent(list::setTooltip);
                 Pattern pattern = element.getValidationPattern();
                 if (pattern != null) {
@@ -368,16 +575,18 @@ public final class ForgeConfigScreenFactory {
 
     private static void saveAndPostConfigEvents(String modId, SaveState saveState) {
         try {
-            if (!saveState.changed) {
+            if (!saveState.hasChanges()) {
                 return;
             }
 
             if (Loader.isModLoaded(modId)) {
                 boolean isWorldRunning = Minecraft.getMinecraft().world != null;
-                ConfigChangedEvent event = new ConfigChangedEvent.OnConfigChangedEvent(modId, null, isWorldRunning, saveState.requiresMcRestart);
-                MinecraftForge.EVENT_BUS.post(event);
-                if (!event.getResult().equals(Event.Result.DENY)) {
-                    MinecraftForge.EVENT_BUS.post(new ConfigChangedEvent.PostConfigChangedEvent(modId, null, isWorldRunning, saveState.requiresMcRestart));
+                for (Map.Entry<String, Boolean> change : saveState.changes.entrySet()) {
+                    ConfigChangedEvent event = new ConfigChangedEvent.OnConfigChangedEvent(modId, change.getKey(), isWorldRunning, change.getValue());
+                    MinecraftForge.EVENT_BUS.post(event);
+                    if (!event.getResult().equals(Event.Result.DENY)) {
+                        MinecraftForge.EVENT_BUS.post(new ConfigChangedEvent.PostConfigChangedEvent(modId, change.getKey(), isWorldRunning, change.getValue()));
+                    }
                 }
             }
 
@@ -387,19 +596,19 @@ public final class ForgeConfigScreenFactory {
         }
     }
 
-    private static <T> void saveValue(IConfigElement element, ValueState<T> original, T value, boolean requiresRestart, SaveState saveState) {
+    private static <T> void saveValue(IConfigElement element, ValueState<T> original, T value, boolean requiresRestart, String configId, SaveState saveState) {
         if (!Objects.equals(original.value, value)) {
             element.set(value);
             original.value = value;
-            saveState.mark(requiresRestart);
+            saveState.mark(configId, requiresRestart);
         }
     }
 
-    private static <T> void saveList(IConfigElement element, ValueState<List<T>> original, List<T> values, boolean requiresRestart, SaveState saveState) {
+    private static <T> void saveList(IConfigElement element, ValueState<List<T>> original, List<T> values, boolean requiresRestart, String configId, SaveState saveState) {
         if (!Objects.equals(original.value, values)) {
             element.set(values.toArray());
             original.value = new ArrayList<>(values);
-            saveState.mark(requiresRestart);
+            saveState.mark(configId, requiresRestart);
         }
     }
 
@@ -409,6 +618,13 @@ public final class ForgeConfigScreenFactory {
 
     private static void addText(ConfigCategory category, String text) {
         category.addEntry(new TextListEntry(text, text, 0xAAAAAA));
+    }
+
+    private static String titleWithSubtitle(GuiConfig guiConfig) {
+        if (guiConfig.titleLine2 == null || guiConfig.titleLine2.trim().isEmpty()) {
+            return guiConfig.title;
+        }
+        return guiConfig.title + " > " + guiConfig.titleLine2;
     }
 
     private static List<IConfigElement> visibleChildren(IConfigElement element) {
@@ -525,17 +741,18 @@ public final class ForgeConfigScreenFactory {
     }
 
     private static final class SaveState {
-        private boolean changed;
-        private boolean requiresMcRestart;
+        private final Map<String, Boolean> changes = new LinkedHashMap<>();
 
-        private void mark(boolean requiresMcRestart) {
-            this.changed = true;
-            this.requiresMcRestart |= requiresMcRestart;
+        private boolean hasChanges() {
+            return !changes.isEmpty();
+        }
+
+        private void mark(String configId, boolean requiresMcRestart) {
+            changes.merge(configId, requiresMcRestart, Boolean::logicalOr);
         }
 
         private void reset() {
-            this.changed = false;
-            this.requiresMcRestart = false;
+            changes.clear();
         }
     }
 
