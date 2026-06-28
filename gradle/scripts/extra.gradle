@@ -1,0 +1,9 @@
+spotless {
+    java {
+        target 'src/main/java/me/shedaniel/**/*.java'
+
+        leadingTabsToSpaces()
+        endWithNewline()
+        removeUnusedImports()
+    }
+}

@@ -1,76 +1,282 @@
+import org.jetbrains.gradle.ext.Gradle
+
 plugins {
-    id "architectury-plugin" version "3.5-SNAPSHOT"
-    id "dev.architectury.loom-no-remap" version "1.14-SNAPSHOT" apply false
-    id "me.shedaniel.unified-publishing" version "0.1.+" apply false
-    id "maven-publish"
-    id "org.cadixdev.licenser" version "0.6.1" apply false
+    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'org.jetbrains.gradle.plugin.idea-ext' version '1.4.1'
+    id 'xyz.wagyourtail.unimined' version '1.4.25-kappa'
+    id 'net.kyori.blossom' version '2.2.0'
+    id 'com.gradleup.shadow' version '9.4.2'
+    id 'com.diffplug.spotless' version '8.6.0'
 }
 
-architectury {
-    minecraft = rootProject.minecraft_version
+apply from: 'gradle/scripts/helpers.gradle'
+
+// Early Assertions
+assertProperty 'mod_version'
+assertProperty 'root_package'
+assertProperty 'mod_id'
+assertProperty 'mod_name'
+
+assertSubProperties 'use_access_transformer', 'access_transformer_locations'
+assertSubProperties 'is_coremod', 'coremod_includes_mod', 'coremod_plugin_class_name'
+assertSubProperties 'use_asset_mover', 'asset_mover_version'
+
+setDefaultProperty 'generate_sources_jar', true, false
+setDefaultProperty 'generate_javadocs_jar', true, false
+setDefaultProperty 'minecraft_username', true, 'Developer'
+setDefaultProperty 'extra_jvm_args', false, ''
+
+version = propertyString('mod_version')
+group = propertyString('root_package')
+
+base {
+    archivesName = propertyString('mod_id')
 }
 
-subprojects {
-    if (it.name != "neoforge_coremods") {
-        apply plugin: "dev.architectury.loom-no-remap"
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+    if (propertyBool('generate_sources_jar')) {
+        withSourcesJar()
+    }
+    if (propertyBool('generate_javadocs_jar')) {
+        withJavadocJar()
+    }
+}
+
+configurations {
+    contain
+    implementation.extendsFrom(contain)
+    shaded
+    implementation.extendsFrom(shaded)
+    modCompileOnly
+    compileOnly.extendsFrom(modCompileOnly)
+    modRuntimeOnly
+    runtimeOnly.extendsFrom(modRuntimeOnly)
+}
+
+String remapTaskName = propertyBool('enable_shadow') ? "remapShadowJar" : "remapJar"
+String mixinConfigs = [
+        "${propertyString('mod_id')}.default.mixin.json",
+        "${propertyString('mod_id')}.mod.mixin.json"
+].findAll { file("src/main/resources/${it}").exists() }.join(',')
+
+//noinspection GroovyAssignabilityCheck
+unimined.minecraft {
+    version "1.12.2"
+
+    mappings {
+        mcp("stable", "39-1.12")
     }
 
-    repositories {
-        maven { url "https://maven.neoforged.net/releases/" }
-        if (rootProject.neoforge_pr != "") {
-            maven {
-                url "https://prmaven.neoforged.net/NeoForge/pr$rootProject.neoforge_pr"
-                content {
-                    includeModule("net.neoforged", "neoforge")
+    cleanroom {
+        if (propertyBool('use_access_transformer')) {
+            accessTransformer "${rootProject.projectDir}/src/main/resources/${propertyString('access_transformer_locations')}"
+        }
+        loader "0.5.14-alpha"
+        runs.all {
+            args += ['--username', minecraft_username]
+            if (!mixinConfigs.isEmpty()) {
+                systemProperty("crl.dev.mixin", mixinConfigs)
+            }
+            def extraArgs = propertyString('extra_jvm_args')
+            if (extraArgs != null && !extraArgs.trim().isEmpty()) {
+                jvmArgs += extraArgs.split { "\\s+" }.toList()
+            }
+            if (propertyBool('enable_foundation_debug')) {
+                systemProperty("foundation.dump", "true")
+                systemProperty("foundation.verbose", "true")
+            }
+            if (propertyBool('is_coremod')) {
+                systemProperty("fml.coreMods.load", propertyString('coremod_plugin_class_name'))
+            }
+            return
+        }
+    }
+
+    defaultRemapJar = false
+
+    String jarTaskName = propertyBool('enable_shadow') ? "shadowJar" : "jar"
+
+    remap(tasks.named(jarTaskName).get()) {
+        mixinRemap {
+            enableBaseMixin()
+            enableMixinExtra()
+        }
+    }
+
+    mods {
+        remap(configurations.modCompileOnly)
+        remap(configurations.modRuntimeOnly)
+    }
+}
+
+dependencies {
+    if (propertyBool('use_asset_mover')) {
+        implementation "com.cleanroommc:assetmover:${propertyString('asset_mover_version')}"
+    }
+    if (propertyBool('enable_junit_testing')) {
+        testImplementation 'org.junit.jupiter:junit-jupiter:6.1.0'
+        testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    }
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+}
+
+apply from: 'gradle/scripts/dependencies.gradle'
+
+processResources {
+    rename '(.+_at.cfg)', 'META-INF/$1'
+}
+
+sourceSets {
+    main {
+        blossom {
+            javaSources {
+                property('mod_id', propertyString('mod_id'))
+                property('mod_name', propertyString('mod_name'))
+                property('mod_version', propertyString('mod_version'))
+                property('package', "${root_package}.${mod_id.replace('-', '_')}")
+            }
+            resources {
+                property('mod_id', propertyString('mod_id'))
+                property('mod_name', propertyString('mod_name'))
+                property('mod_version', propertyString('mod_version'))
+                property('mod_description', propertyString('mod_description'))
+                property('mod_authors', propertyStringList('mod_authors', ',').collect {it.strip()}.join('", "'))
+                property('mod_credits', propertyString('mod_credits'))
+                property('mod_license', propertyString('mod_license'))
+                property('mod_url', propertyString('mod_url'))
+                property('mod_issue_tracker_url', propertyString('mod_issue_tracker_url'))
+                property('mod_update_json', propertyString('mod_update_json'))
+                property('mod_icon_item', propertyString('mod_icon_item'))
+                property('mod_logo_path', propertyString('mod_logo_path'))
+                property('mod_icon_path', propertyString('mod_icon_path'))
+                property('mod_background_path', propertyString('mod_background_path'))
+            }
+        }
+    }
+}
+
+compileJava {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_25
+}
+
+jar {
+    archiveClassifier = 'dev'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    if (configurations.contain.size() > 0) {
+        into('/') {
+            from configurations.contain
+        }
+    }
+    doFirst {
+        manifest {
+            def attribute_map = [:]
+            attribute_map['ModType'] = "CRL"
+            if (!mixinConfigs.isEmpty()) {
+                attribute_map['MixinConfigs'] = mixinConfigs
+            }
+            if (configurations.contain.size() > 0) {
+                attribute_map['ContainedDeps'] = configurations.contain.collect { it.name }.join(' ')
+                attribute_map['NonModDeps'] = true
+            }
+            if (propertyBool('is_coremod')) {
+                attribute_map['FMLCorePlugin'] = propertyString('coremod_plugin_class_name')
+                if (propertyBool('coremod_includes_mod')) {
+                    attribute_map['FMLCorePluginContainsFMLMod'] = true
+                }
+            }
+            if (propertyBool('use_access_transformer')) {
+                attribute_map['FMLAT'] = propertyString('access_transformer_locations')
+            }
+            attributes(attribute_map)
+        }
+    }
+    finalizedBy(tasks.named(remapTaskName).get())
+}
+
+// Shade deps to the dev jar, so the normal dev jar will contain deps
+shadowJar {
+    archiveClassifier = 'dev'
+    //noinspection GroovyAssignabilityCheck,GroovyAccessibility
+    configurations = [ project.configurations.shaded ]
+}
+
+if (propertyBool('enable_shadow')) {
+    // Unshaded dev jar get 'plain' as name
+    tasks.named("jar").configure {
+        finalizedBy shadowJar
+        archiveClassifier = "plain"
+    }
+} else {
+    tasks.named('shadowJar').configure {
+        enabled = false
+    }
+}
+
+tasks.named(remapTaskName).configure {
+    doFirst {
+        logging.captureStandardOutput LogLevel.INFO
+    }
+    doLast {
+        logging.captureStandardOutput LogLevel.QUIET
+    }
+}
+
+idea {
+    module {
+        inheritOutputDirs = true
+    }
+    project {
+        settings {
+            runConfigurations {
+                "0. Apply Spotless"(Gradle) {
+                    taskNames = ["spotlessApply"]
+                }
+                "1. Run Client"(Gradle) {
+                    taskNames = ["runClient"]
+                }
+                "2. Run Server"(Gradle) {
+                    taskNames = ["runServer"]
+                }
+                "3. Build Mod"(Gradle) {
+                    taskNames = ["build"]
+                }
+            }
+            compiler.javac {
+                afterEvaluate {
+                    javacAdditionalOptions = "-encoding utf8"
+                    moduleJavacAdditionalOptions = [
+                            (project.name + ".main"): tasks.compileJava.options.compilerArgs.collect { '"' + it + '"' }.join(' ')
+                    ]
                 }
             }
         }
     }
 }
 
-allprojects {
-    apply plugin: 'java'
-//    apply plugin: 'org.cadixdev.licenser' // Fails in Gradle 9
-
-    def runNumber = (System.getenv("GITHUB_RUN_NUMBER") == null ? "9999" : System.getenv("GITHUB_RUN_NUMBER"))
-
-    version = rootProject.base_version + "." + runNumber
-
-    base {
-        archivesName = rootProject.archives_base_name
-    }
-
-    group = rootProject.maven_group
-
-    if (it.name != "neoforge_coremods") {
-        apply plugin: 'architectury-plugin'
-    }
-
-    tasks.withType(JavaCompile).configureEach {
-        options.encoding = "UTF-8"
-
-        // The Minecraft launcher currently installs Java 8 for users, so your mod probably wants to target Java 8 too
-        // JDK 9 introduced a new way of specifying this that will make sure no newer classes or methods are used.
-        // We'll use that if it's available, but otherwise we'll use the older option.
-        options.release = 25
-    }
-
-    /*license {
-        header = rootProject.file("HEADER")
-
-        ext {
-            name = "shedaniel"
-            year = "2020 - 2021"
-        }
-
-        include "**/ /**.java"
-        exclude "**/ /*ScrollingContainer.java"
-
-        ignoreFailures = true
-    }*/
+compileTestJava {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_25
 }
 
-task licenseFormatAll
-subprojects { licenseFormatAll.dependsOn("${path}:licenseFormat") }
+test {
+    useJUnitPlatform()
+    javaLauncher.set(javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(25)
+    })
+    if (propertyBool('show_testing_output')) {
+        testLogging {
+            showStandardStreams = true
+        }
+    }
+}
 
-task modPublish
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+apply from: 'gradle/scripts/publishing.gradle'
+apply from: 'gradle/scripts/extra.gradle'

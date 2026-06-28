@@ -1,19 +1,27 @@
-build/
-*.ipr
+.gradle
+**/build/
+!src/**/build/
 run/
-*.iws
 out/
-*.iml
-.gradle/
-output/
-bin/
-libs/
 
-.classpath
+# Ignore Gradle GUI config
+gradle-app.setting
+
+# Avoid ignoring Gradle wrapper jar file (.jar files are usually ignored)
+!gradle-wrapper.jar
+
+# Avoid ignore Gradle wrappper properties
+!gradle-wrapper.properties
+
+# Cache of project
+.gradletasknamecache
+
+# Eclipse Gradle plugin generated files
+# Eclipse Core
 .project
-.settings/org.eclipse.core.resources.prefs
-.idea/
-classes/
+# JDT-specific (Eclipse Java Development Tools)
+.classpath
 
-.vscode/
-logs/
+# IDEA config
+.idea
+
