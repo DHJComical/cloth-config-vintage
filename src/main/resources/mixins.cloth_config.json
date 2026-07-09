@@ -1,5 +1,5 @@
 {
-  "package": "${mixin_package}",
+  "package": "me.shedaniel.clothconfig2.mixin",
   "required": false,
   "refmap": "${mixin_refmap}",
   "target": "@env(DEFAULT)",
