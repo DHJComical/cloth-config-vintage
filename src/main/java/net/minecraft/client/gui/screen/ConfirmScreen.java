@@ -1,19 +1,19 @@
 package net.minecraft.client.gui.screen;
 
-import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import net.minecraft.client.gui.widget.button.Button;
 import net.minecraft.util.text.TranslationTextComponent;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public class ConfirmScreen extends Screen {
-    private final BooleanConsumer callback;
+    private final Consumer<Boolean> callback;
     private final Object title;
     private final Object message;
     private final String yesText;
     private final String noText;
 
-    public ConfirmScreen(BooleanConsumer callback, Object title, Object message, String yesText, String noText) {
+    public ConfirmScreen(Consumer<Boolean> callback, Object title, Object message, String yesText, String noText) {
         this.callback = callback;
         this.title = title;
         this.message = message;

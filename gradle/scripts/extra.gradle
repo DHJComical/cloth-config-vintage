@@ -1,9 +1,5 @@
-spotless {
-    java {
-        target 'src/main/java/me/shedaniel/**/*.java'
+// You may write any gradle buildscript component in this file
+// This file is automatically applied after build.gradle + dependencies.gradle is ran
 
-        leadingTabsToSpaces()
-        endWithNewline()
-        removeUnusedImports()
-    }
-}
+// If you wish to use the default helper methods, uncomment the line below
+// apply from: 'gradle/scripts/helpers.gradle'

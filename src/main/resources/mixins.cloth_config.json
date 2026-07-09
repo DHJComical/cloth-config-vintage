@@ -1,0 +1,16 @@
+{
+  "package": "${mixin_package}",
+  "required": false,
+  "refmap": "${mixin_refmap}",
+  "target": "@env(DEFAULT)",
+  "minVersion": "0.8.7",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [],
+  "server": [],
+  "client": [
+    "DefaultGuiFactoryMixin",
+    "FMLConfigGuiFactoryMixin",
+    "ForgeGuiFactoryMixin"
+  ],
+  "setSourceFile": true
+}

@@ -8,13 +8,27 @@ repositories {
         name = 'CurseMaven'
         url = 'https://cursemaven.com'
     }
-    maven {
-        name = 'CleanroomCurseMaven'
-        url = 'https://curse.cleanroommc.com'
+    exclusiveContent {
+        forRepository {
+            maven {
+                name 'CleanroomMC CurseMaven'
+                url 'https://curse.cleanroommc.com'
+            }
+        }
+        filter {
+            includeGroup 'curse.maven'
+        }
     }
-    maven {
-        name = 'Modrinth'
-        url = 'https://api.modrinth.com/maven'
+    exclusiveContent {
+        forRepository {
+            maven {
+                name 'Modrinth'
+                url 'https://api.modrinth.com/maven'
+            }
+        }
+        filter {
+            includeGroup 'maven.modrinth'
+        }
     }
     maven {
         name = 'Shedaniel'
@@ -24,24 +38,38 @@ repositories {
     mavenLocal()
 }
 
-dependencies {
-    if (propertyBool('enable_lwjglx')) {
-        compileOnly "com.cleanroommc:lwjglx:1.0.0"
-    }
-
-    compileOnly "org.jetbrains:annotations:24.1.0"
-
-    shaded "me.shedaniel.cloth:basic-math:0.6.1"
-    shaded "blue.endless:jankson:1.2.0"
-    shaded("com.moandjiezana.toml:toml4j:0.7.2") {
-        exclude(module: "gson")
-    }
-    shaded "org.yaml:snakeyaml:1.27"
+configurations {
+    shade
+    implementation.extendsFrom shade
 }
 
-tasks.named("shadowJar").configure {
-    relocate "me.shedaniel.math", "${propertyString('root_package')}.clothconfig.shadowed.me.shedaniel.math"
-    relocate "blue.endless.jankson", "${propertyString('root_package')}.clothconfig.shadowed.blue.endless.jankson"
-    relocate "com.moandjiezana.toml", "${propertyString('root_package')}.clothconfig.shadowed.com.moandjiezana.toml"
-    relocate "org.yaml.snakeyaml", "${propertyString('root_package')}.clothconfig.shadowed.org.yaml.snakeyaml"
+dependencies {
+    runtimeOnly 'com.cleanroommc:strip-latest-forge-requirements:1.0'
+    runtimeOnly 'com.cleanroommc:osxnarratorblocker:1.0'
+
+    compileOnly 'org.jetbrains:annotations:24.1.0'
+    compileOnly 'com.google.code.findbugs:jsr305:3.0.2'
+
+    shade 'me.shedaniel.cloth:basic-math:0.6.1'
+    shade 'blue.endless:jankson:1.2.0'
+    shade('com.moandjiezana.toml:toml4j:0.7.2') {
+        exclude module: 'gson'
+    }
+    shade 'org.yaml:snakeyaml:1.27'
+}
+
+if (!configurations.shade.dependencies.empty) {
+    tasks.named('reobfJar').configure {
+        inputJar.set(tasks.named('shadowJar').flatMap({ it.archiveFile }))
+    }
+}
+
+tasks.shadowJar {
+    enabled = !project.configurations.shade.dependencies.empty
+    archiveClassifier = 'uberdev'
+    configurations = [project.configurations.shade]
+    relocate 'me.shedaniel.math', "${propertyString('root_package')}.clothconfig.shadowed.me.shedaniel.math"
+    relocate 'blue.endless.jankson', "${propertyString('root_package')}.clothconfig.shadowed.blue.endless.jankson"
+    relocate 'com.moandjiezana.toml', "${propertyString('root_package')}.clothconfig.shadowed.com.moandjiezana.toml"
+    relocate 'org.yaml.snakeyaml', "${propertyString('root_package')}.clothconfig.shadowed.org.yaml.snakeyaml"
 }

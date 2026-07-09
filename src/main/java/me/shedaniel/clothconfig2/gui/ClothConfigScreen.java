@@ -4,7 +4,6 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AtomicDouble;
 import com.mojang.blaze3d.systems.RenderSystem;
-import it.unimi.dsi.fastutil.booleans.BooleanConsumer;
 import me.shedaniel.clothconfig2.ClothConfigInitializer;
 import me.shedaniel.clothconfig2.api.*;
 import me.shedaniel.clothconfig2.gui.entries.KeyCodeEntry;
@@ -38,6 +37,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @SuppressWarnings({"deprecation", "rawtypes", "unchecked", "DuplicatedCode"})
@@ -638,9 +638,9 @@ public abstract class ClothConfigScreen extends Screen {
         this.editable = editable;
     }
     
-    private class QuitSaveConsumer implements BooleanConsumer {
+    private class QuitSaveConsumer implements Consumer<Boolean> {
         @Override
-        public void accept(boolean t) {
+        public void accept(Boolean t) {
             if (!t)
                 minecraft.displayGuiScreen(ClothConfigScreen.this);
             else
